@@ -1,0 +1,181 @@
+# 危险工具链模式库
+# 从ZIRAN项目借鉴，包含常见的危险工具组合
+
+# 数据外泄类
+- name: data_exfiltration_basic
+  tools: ["read_file", "http_request"]
+  risk: critical
+  description: 文件内容可能被发送到外部服务器
+  remediation: 实施外部URL白名单；验证文件访问范围
+
+- name: data_exfiltration_via_sql
+  tools: ["execute_sql", "http_request"]
+  risk: critical
+  description: SQL查询结果可能被发送到外部服务器
+  remediation: 限制SQL查询结果的外部传输
+
+- name: data_exfiltration_via_env
+  tools: ["read_env", "http_request"]
+  risk: critical
+  description: 环境变量（可能包含密钥）可能被发送到外部服务器
+  remediation: 禁止将环境变量内容发送到外部
+
+- name: data_exfiltration_complex
+  tools: ["read_file", "parse_json", "http_request"]
+  risk: critical
+  description: 读取文件后解析并通过HTTP发送
+  remediation: 限制数据解析后的外部传输
+
+# 代码执行类
+- name: sql_to_rce
+  tools: ["execute_sql", "shell"]
+  risk: critical
+  description: SQL查询结果可能用于构造shell命令
+  remediation: 禁止将SQL结果用于命令构造
+
+- name: file_to_shell
+  tools: ["read_file", "shell"]
+  risk: critical
+  description: 读取的文件内容可能被用于shell命令
+  remediation: 禁止将文件内容用于命令构造
+
+- name: code_execution_chain
+  tools: ["read_file", "execute_code"]
+  risk: critical
+  description: 读取文件后执行其中的代码
+  remediation: 禁止执行来自文件的代码
+
+- name: dynamic_code_execution
+  tools: ["http_request", "execute_code"]
+  risk: critical
+  description: 从外部获取内容并执行
+  remediation: 禁止执行来自外部的代码
+
+# 权限提升类
+- name: privilege_escalation_basic
+  tools: ["read_file", "write_file", "shell"]
+  risk: critical
+  description: 读写文件后执行shell，可能提升权限
+  remediation: 限制文件写入后的命令执行
+
+- name: privilege_escalation_via_config
+  tools: ["read_file", "write_file", "execute_code"]
+  risk: critical
+  description: 修改配置文件后执行代码
+  remediation: 限制配置文件修改后的代码执行
+
+- name: ssh_key_theft
+  tools: ["read_file", "http_request"]
+  risk: critical
+  description: 可能窃取SSH密钥并发送
+  remediation: 限制对密钥文件的访问
+
+# 文件系统攻击类
+- name: file_overwrite
+  tools: ["http_request", "write_file"]
+  risk: high
+  description: 从外部下载内容并写入文件
+  remediation: 限制外部内容的文件写入
+
+- name: sensitive_file_access
+  tools: ["read_file", "write_file"]
+  risk: high
+  description: 读取并修改敏感文件
+  remediation: 限制对敏感文件的写操作
+
+- name: file_deletion_chain
+  tools: ["read_file", "delete_file"]
+  risk: high
+  description: 读取文件后删除
+  remediation: 限制文件删除操作
+
+# 命令注入类
+- name: command_injection_via_input
+  tools: ["read_file", "shell"]
+  risk: critical
+  description: 文件内容可能包含恶意命令
+  remediation: 对shell命令输入进行严格验证
+
+- name: command_injection_via_sql
+  tools: ["execute_sql", "shell"]
+  risk: critical
+  description: SQL结果可能包含恶意命令
+  remediation: 对SQL结果进行命令过滤
+
+# 认证绕过类
+- name: token_theft
+  tools: ["read_env", "http_request"]
+  risk: critical
+  description: 窃取认证token并发送
+  remediation: 限制环境变量的外部传输
+
+- name: password_exfiltration
+  tools: ["read_file", "http_request"]
+  risk: critical
+  description: 读取包含密码的文件并发送
+  remediation: 限制密码文件的外部传输
+
+# 会话劫持类
+- name: session_hijack
+  tools: ["read_file", "write_file"]
+  risk: high
+  description: 读取并修改会话文件
+  remediation: 限制会话文件的修改
+
+- name: cookie_theft
+  tools: ["read_file", "http_request"]
+  risk: critical
+  description: 窃取cookie并发送
+  remediation: 限制cookie的外部传输
+
+# 数据污染类
+- name: data_poisoning_via_file
+  tools: ["write_file", "read_file"]
+  risk: medium
+  description: 写入恶意数据后读取
+  remediation: 验证文件内容的完整性
+
+- name: data_poisoning_via_http
+  tools: ["http_request", "write_file"]
+  risk: high
+  description: 从外部获取数据并写入
+  remediation: 验证外部数据的合法性
+
+# MCP特定模式
+- name: mcp_resource_exfiltration
+  tools: ["read_resource", "send_message"]
+  risk: critical
+  description: 读取MCP资源后发送消息
+  remediation: 限制资源的外部传输
+
+- name: mcp_tool_abuse
+  tools: ["call_tool", "http_request"]
+  risk: critical
+  description: 调用工具后发送结果到外部
+  remediation: 限制工具调用结果的外部传输
+
+# 云服务类
+- name: cloud_credential_theft
+  tools: ["read_env", "http_request"]
+  risk: critical
+  description: 窃取云服务凭证并发送
+  remediation: 限制云凭证的外部传输
+
+- name: cloud_data_exfiltration
+  tools: ["query_database", "http_request"]
+  risk: critical
+  description: 查询云数据库后发送数据
+  remediation: 限制云数据的外部传输
+
+# 浏览器/爬虫类
+- name: browser_data_exfiltration
+  tools: ["browse_url", "http_request"]
+  risk: high
+  description: 浏览网页后发送数据
+  remediation: 限制浏览数据的外部传输
+
+- name: scraping_to_external
+  tools: ["scrape_web", "http_request"]
+  risk: high
+  description: 爬取网页后发送到外部
+  remediation: 限制爬取数据的外部传输

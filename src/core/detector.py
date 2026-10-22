@@ -1,0 +1,142 @@
+"""
+实时检测器：整合所有检测规则
+"""
+
+from datetime import datetime
+from typing import Optional
+import uuid
+
+from src.models.input import ToolCallInput
+from src.models.alert import Alert
+from src.core.chain_matcher import ChainMatcher
+from src.core.permission_checker import PermissionChecker
+from src.core.injection_checker import InjectionChecker
+from src.core.frequency_checker import FrequencyChecker
+from src.core.risk_scorer import RiskScorer
+
+
+class RealTimeDetector:
+    """
+    实时工具调用链攻击检测器
+
+    整合4类检测规则：
+    1. 权限策略检查
+    2. 参数注入检查
+    3. 链模式检测
+    4. 频率异常检查
+    """
+
+    def __init__(self, rules_dir: str = "src/rules"):
+        """
+        初始化检测器
+
+        Args:
+            rules_dir: 规则配置目录
+        """
+        self.chain_matcher = ChainMatcher(f"{rules_dir}/chain_patterns.yaml")
+        self.permission_checker = PermissionChecker(f"{rules_dir}/permission_policy.yaml")
+        self.injection_checker = InjectionChecker()
+        self.frequency_checker = FrequencyChecker()
+        self.risk_scorer = RiskScorer()
+
+        # 会话buffer（维护每个session的工具调用历史）
+        self.session_buffers: dict[str, list[ToolCallInput]] = {}
+
+    def on_tool_call(self, tool_call: ToolCallInput) -> Optional[Alert]:
+        """
+        处理一次工具调用
+
+        Args:
+            tool_call: 工具调用输入
+
+        Returns:
+            如果检测到威胁，返回Alert；否则返回None
+        """
+        session_id = tool_call.session_id or "default"
+
+        # 更新buffer
+        if session_id not in self.session_buffers:
+            self.session_buffers[session_id] = []
+        self.session_buffers[session_id].append(tool_call)
+
+        # 1. 权限检查
+        perm_result = self.permission_checker.check(tool_call.tool_name)
+        if not perm_result["allowed"]:
+            return self._create_alert(
+                alert_type="PERMISSION_VIOLATION",
+                details=perm_result,
+                tool_call=tool_call,
+                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
+            )
+
+        # 2. 参数注入检查
+        injection_result = self.injection_checker.check(
+            tool_call.tool_name,
+            tool_call.arguments
+        )
+        if injection_result["detected"]:
+            return self._create_alert(
+                alert_type="INJECTION_DETECTED",
+                details=injection_result,
+                tool_call=tool_call,
+                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
+            )
+
+        # 3. 链模式检查
+        chain_result = self.chain_matcher.check(self.session_buffers[session_id])
+        if chain_result["matched"]:
+            return self._create_alert(
+                alert_type="DANGEROUS_CHAIN",
+                details=chain_result,
+                tool_call=tool_call,
+                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
+            )
+
+        # 4. 频率检查
+        freq_result = self.frequency_checker.check(session_id, tool_call)
+        if freq_result["anomaly"]:
+            return self._create_alert(
+                alert_type="FREQUENCY_ANOMALY",
+                details=freq_result,
+                tool_call=tool_call,
+                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
+            )
+
+        # 所有检查通过
+        return None
+
+    def _create_alert(
+        self,
+        alert_type: str,
+        details: dict,
+        tool_call: ToolCallInput,
+        tool_chain: list[str]
+    ) -> Alert:
+        """
+        创建告警对象
+
+        Args:
+            alert_type: 告警类型
+            details: 详细信息
+            tool_call: 触发告警的工具调用
+            tool_chain: 当前工具调用链
+
+        Returns:
+            Alert对象
+        """
+        session_id = tool_call.session_id or "default"
+
+        # 计算风险评分
+        risk_score = self.risk_scorer.calculate(alert_type, details)
+        risk_level = self.risk_scorer.get_risk_level(risk_score)
+
+        return Alert(
+            alert_id=f"alert_{uuid.uuid4().hex[:8]}",
+            session_id=session_id,
+            alert_type=alert_type,
+            risk_level=risk_level,
+            risk_score=risk_score,
+            details=details,
+            tool_chain=tool_chain,
+            timestamp=tool_call.timestamp
+        )

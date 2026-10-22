@@ -1,0 +1,62 @@
+# 权限策略配置
+# 定义agent可以使用的工具和风险等级
+
+# 白名单：允许使用的工具
+allowed_tools:
+  - read_file
+  - execute_sql
+  - search
+  - parse_json
+  - calculate
+  - format_text
+  - query_database
+  - browse_url
+
+# 黑名单：禁止使用的工具
+forbidden_tools:
+  - shell
+  - execute_code
+  - http_request
+  - delete_file
+  - write_file
+  - send_email
+  - read_env
+
+# 工具风险等级
+tool_risk_levels:
+  # 关键风险
+  shell: critical
+  execute_code: critical
+  http_request: critical
+  read_env: critical
+  delete_file: critical
+
+  # 高风险
+  read_file: high
+  execute_sql: high
+  query_database: high
+  write_file: high
+  send_email: high
+
+  # 中等风险
+  search: medium
+  browse_url: medium
+
+  # 低风险
+  parse_json: low
+  calculate: low
+  format_text: low
+
+# 风险阈值配置
+risk_thresholds:
+  # 高于此等级的工具需要额外审批
+  approval_required: high
+  # 高于此等级的工具调用会被记录
+  logging_required: medium
+
+# 频率限制
+frequency_limits:
+  # 每个session每分钟最大调用次数
+  max_calls_per_minute: 10
+  # 每个session每小时最大调用次数
+  max_calls_per_hour: 100
