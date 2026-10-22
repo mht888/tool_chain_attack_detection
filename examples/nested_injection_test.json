@@ -1,0 +1,19 @@
+{
+  "session_id": "session_nested_injection_001",
+  "agent_name": "test_agent",
+  "description": "测试嵌套参数注入检查：恶意内容在嵌套 JSON 中",
+  "tool_calls": [
+    {
+      "tool_name": "execute_sql",
+      "arguments": {
+        "query": "SELECT * FROM users",
+        "config": {
+          "options": {
+            "extra": "; DROP TABLE users"
+          }
+        }
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    }
+  ]
+}

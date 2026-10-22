@@ -34,12 +34,18 @@ class RealTimeDetector:
         """
         self.chain_matcher = ChainMatcher(f"{rules_dir}/chain_patterns.yaml")
         self.permission_checker = PermissionChecker(f"{rules_dir}/permission_policy.yaml")
-        self.injection_checker = InjectionChecker()
-        self.frequency_checker = FrequencyChecker()
+        self.injection_checker = InjectionChecker(f"{rules_dir}/param_whitelist.yaml")
+        self.frequency_checker = FrequencyChecker(f"{rules_dir}/permission_policy.yaml")
         self.risk_scorer = RiskScorer()
 
         # 会话buffer（维护每个session的工具调用历史）
         self.session_buffers: dict[str, list[ToolCallInput]] = {}
+        
+        # 每个工具的参数合规状态（工具名 -> 是否合规）
+        self.param_compliant_map: dict[str, bool] = {}
+        
+        # 记录"初判有风险但参数合规"的情况
+        self.skipped_chain_warnings: list[dict] = []
 
     def on_tool_call(self, tool_call: ToolCallInput) -> list[Alert]:
         """
@@ -78,6 +84,10 @@ class RealTimeDetector:
             tool_call.tool_name,
             tool_call.arguments
         )
+        
+        # 记录参数合规状态
+        self.param_compliant_map[tool_call.tool_name] = injection_result.get("param_compliant", True)
+        
         if injection_result["detected"]:
             alerts.append(self._create_alert(
                 alert_type="INJECTION_DETECTED",
@@ -87,7 +97,7 @@ class RealTimeDetector:
             ))
 
         # 3. 链模式检查
-        chain_result = self.chain_matcher.check(self.session_buffers[session_id])
+        chain_result = self.chain_matcher.check(self.session_buffers[session_id], self.param_compliant_map)
         if chain_result["matched"]:
             alerts.append(self._create_alert(
                 alert_type="DANGEROUS_CHAIN",
@@ -95,6 +105,14 @@ class RealTimeDetector:
                 tool_call=tool_call,
                 tool_chain=tool_chain
             ))
+        elif chain_result.get("skipped"):
+            # 记录"初判有风险但参数合规"的情况
+            self.skipped_chain_warnings.append({
+                "tool_name": tool_call.tool_name,
+                "pattern": chain_result.get("pattern", {}),
+                "reason": chain_result.get("skip_reason", ""),
+                "timestamp": tool_call.timestamp
+            })
 
         # 4. 频率检查
         freq_result = self.frequency_checker.check(session_id, tool_call)

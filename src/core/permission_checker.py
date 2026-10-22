@@ -5,6 +5,8 @@
 from typing import Any
 import yaml
 
+from src.rules.tool_classifier import classify_tool
+
 
 class PermissionChecker:
     """
@@ -21,6 +23,12 @@ class PermissionChecker:
             policy_path: 权限策略配置路径（YAML格式）
         """
         self.policy = self._load_policy(policy_path)
+        
+        # 加载工具风险等级配置
+        self.tool_risk_levels = self.policy.get("tool_risk_levels", {})
+        
+        # 加载风险阈值配置
+        self.risk_thresholds = self.policy.get("risk_thresholds", {})
 
     def _load_policy(self, path: str) -> dict[str, Any]:
         """加载权限策略"""
@@ -65,13 +73,21 @@ class PermissionChecker:
         # 检查白名单
         allowed_tools = self.policy.get("allowed_tools", [])
         if allowed_tools and tool_name not in allowed_tools:
-            # 不在白名单中，但不阻断，只标记风险
+            # 不在白名单中，优先使用 YAML 配置的风险等级，否则使用 tool_classifier 动态评估
+            if tool_name in self.tool_risk_levels:
+                risk = self.tool_risk_levels[tool_name]
+                risk_note = f"工具 {tool_name} 未在白名单中配置，YAML 配置风险等级为 {risk}"
+            else:
+                classification = classify_tool(tool_name)
+                risk = classification.risk
+                risk_note = f"工具 {tool_name} 未在白名单中配置，动态分类为 {classification.risk} 风险：{classification.description}"
+            
             return {
-                "allowed": True,  # 改为允许，但标记风险
+                "allowed": True,  # 允许，但标记风险
                 "blocked": False,
                 "reason": f"工具 {tool_name} 不在白名单中",
-                "risk": "medium",
-                "risk_note": f"工具 {tool_name} 未在白名单中配置，需关注"
+                "risk": risk,
+                "risk_note": risk_note
             }
 
         # 通过检查

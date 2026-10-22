@@ -1,0 +1,22 @@
+{
+  "session_id": "session_unknown_tool_001",
+  "agent_name": "test_agent",
+  "description": "测试不在白名单中的工具，验证 tool_classifier 动态分类",
+  "tool_calls": [
+    {
+      "tool_name": "read_file",
+      "arguments": {"path": "/data/config.json"},
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "shell",
+      "arguments": {"command": "ls -la"},
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "backup_database",
+      "arguments": {"db": "production"},
+      "timestamp": "2024-01-15T10:30:10Z"
+    }
+  ]
+}

@@ -4,6 +4,8 @@
 
 from typing import Any
 
+from src.rules.tool_classifier import classify_tool
+
 
 class RiskScorer:
     """
@@ -65,6 +67,17 @@ class RiskScorer:
                 total = base_score + freq_bonus
             else:
                 total = base_score
+        elif alert_type == "PERMISSION_VIOLATION":
+            # 权限违规：根据工具动态分类的风险等级调整
+            tool_name = details.get("tool_name", "")
+            if tool_name:
+                classification = classify_tool(tool_name)
+                # 使用动态分类的风险等级重新计算 bonus
+                dynamic_risk = classification.risk
+                dynamic_bonus = self.risk_weights.get(dynamic_risk, 15)
+                total = base_score + dynamic_bonus
+            else:
+                total = base_score + risk_bonus
         else:
             total = base_score + risk_bonus
 

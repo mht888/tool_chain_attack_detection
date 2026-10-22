@@ -116,6 +116,10 @@ def run_detection(input_path: str, output_path: str, rules_dir: str = "src/rules
     output_dir = Path(output_path).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # 将跳过的链警告传递给报告
+    for warning in detector.skipped_chain_warnings:
+        report.add_skipped_chain_warning(warning)
+
     # 保存报告
     report.save(output_path)
 

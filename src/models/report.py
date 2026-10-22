@@ -28,6 +28,7 @@ class DetectionReport:
         self.total_tool_calls = 0
         self.alerts: list[Alert] = []
         self.tool_call_log: list[dict] = []
+        self.skipped_chain_warnings: list[dict] = []  # 初判有风险但参数合规的记录
 
     def add_tool_call(self, tool_name: str, arguments: dict, blocked: bool = False):
         """
@@ -49,6 +50,10 @@ class DetectionReport:
     def add_alert(self, alert: Alert):
         """添加告警"""
         self.alerts.append(alert)
+
+    def add_skipped_chain_warning(self, warning: dict):
+        """添加初判有风险但参数合规的记录"""
+        self.skipped_chain_warnings.append(warning)
 
     def finalize(self):
         """完成报告"""
@@ -141,13 +146,37 @@ class DetectionReport:
                     lines.append("")
 
                 # 建议
-                recommendation = alert.details.get("recommendation") or alert.details.get("pattern", {}).get("recommendation", "")
+                pattern_details = alert.details.get("pattern", {})
+                if isinstance(pattern_details, dict):
+                    recommendation = alert.details.get("recommendation") or pattern_details.get("recommendation", "")
+                else:
+                    recommendation = alert.details.get("recommendation", "")
                 if recommendation:
                     lines.append(f"**建议:** {recommendation}")
                     lines.append("")
 
                 lines.append("---")
                 lines.append("")
+
+        # 初判有风险但参数合规的记录
+        if self.skipped_chain_warnings:
+            lines.append("## 初判有风险但参数合规")
+            lines.append("")
+            lines.append("以下工具调用匹配了危险链模式，但参数在白名单中，已放行：")
+            lines.append("")
+
+            for i, warning in enumerate(self.skipped_chain_warnings, 1):
+                pattern = warning.get("pattern", {})
+                lines.append(f"### 记录 {i}: {warning.get('tool_name', 'unknown')}")
+                lines.append("")
+                lines.append(f"- **匹配模式:** {pattern.get('name', 'unknown')}")
+                lines.append(f"- **模式描述:** {pattern.get('description', '')}")
+                lines.append(f"- **放行原因:** {warning.get('reason', '')}")
+                lines.append(f"- **时间:** {warning.get('timestamp', '').strftime('%Y-%m-%d %H:%M:%S') if hasattr(warning.get('timestamp', ''), 'strftime') else warning.get('timestamp', '')}")
+                lines.append("")
+
+            lines.append("---")
+            lines.append("")
 
         # 工具调用时间线
         lines.append("## 工具调用时间线")

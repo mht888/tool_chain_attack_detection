@@ -1,0 +1,26 @@
+{
+  "session_id": "session_frequency_test",
+  "agent_name": "test_agent",
+  "description": "测试频率检查按工具类型区分：search 调用 15 次（低风险，阈值 20）不告警，shell 调用 4 次（critical，阈值 3）告警",
+  "tool_calls": [
+    {"tool_name": "search", "arguments": {"query": "test1"}, "timestamp": "2024-01-15T10:30:00Z"},
+    {"tool_name": "search", "arguments": {"query": "test2"}, "timestamp": "2024-01-15T10:30:01Z"},
+    {"tool_name": "search", "arguments": {"query": "test3"}, "timestamp": "2024-01-15T10:30:02Z"},
+    {"tool_name": "search", "arguments": {"query": "test4"}, "timestamp": "2024-01-15T10:30:03Z"},
+    {"tool_name": "search", "arguments": {"query": "test5"}, "timestamp": "2024-01-15T10:30:04Z"},
+    {"tool_name": "search", "arguments": {"query": "test6"}, "timestamp": "2024-01-15T10:30:05Z"},
+    {"tool_name": "search", "arguments": {"query": "test7"}, "timestamp": "2024-01-15T10:30:06Z"},
+    {"tool_name": "search", "arguments": {"query": "test8"}, "timestamp": "2024-01-15T10:30:07Z"},
+    {"tool_name": "search", "arguments": {"query": "test9"}, "timestamp": "2024-01-15T10:30:08Z"},
+    {"tool_name": "search", "arguments": {"query": "test10"}, "timestamp": "2024-01-15T10:30:09Z"},
+    {"tool_name": "search", "arguments": {"query": "test11"}, "timestamp": "2024-01-15T10:30:10Z"},
+    {"tool_name": "search", "arguments": {"query": "test12"}, "timestamp": "2024-01-15T10:30:11Z"},
+    {"tool_name": "search", "arguments": {"query": "test13"}, "timestamp": "2024-01-15T10:30:12Z"},
+    {"tool_name": "search", "arguments": {"query": "test14"}, "timestamp": "2024-01-15T10:30:13Z"},
+    {"tool_name": "search", "arguments": {"query": "test15"}, "timestamp": "2024-01-15T10:30:14Z"},
+    {"tool_name": "shell", "arguments": {"command": "ls"}, "timestamp": "2024-01-15T10:30:15Z"},
+    {"tool_name": "shell", "arguments": {"command": "pwd"}, "timestamp": "2024-01-15T10:30:16Z"},
+    {"tool_name": "shell", "arguments": {"command": "whoami"}, "timestamp": "2024-01-15T10:30:17Z"},
+    {"tool_name": "shell", "arguments": {"command": "date"}, "timestamp": "2024-01-15T10:30:18Z"}
+  ]
+}

@@ -1,5 +1,5 @@
 """
-链模式匹配器：子序列匹配算法（从Pipelock的Go代码翻译）
+链模式匹配器：子序列匹配算法
 """
 
 from typing import Any
@@ -38,26 +38,56 @@ class ChainMatcher:
             print(f"警告: 加载模式库失败: {e}")
             return []
 
-    def check(self, buffer: list[ToolCallInput]) -> dict[str, Any]:
+    def check(self, buffer: list[ToolCallInput], param_compliant_map: dict[str, bool] = None) -> dict[str, Any]:
         """
         检查buffer中是否包含危险链
 
         Args:
             buffer: 工具调用历史
+            param_compliant_map: 工具名到参数合规状态的映射
 
         Returns:
             {
                 "matched": bool,
                 "pattern": dict (如果匹配),
-                "chain": list[str]
+                "chain": list[str],
+                "skipped": bool (是否因参数合规而跳过),
+                "skip_reason": str (跳过原因)
             }
         """
+        if param_compliant_map is None:
+            param_compliant_map = {}
+        
         tool_names = [tc.tool_name for tc in buffer]
 
         for pattern in self.patterns:
             if self._subsequence_match(tool_names, pattern["tools"]):
+                # 检查相关工具是否已标记参数合规
+                pattern_tools = pattern["tools"]
+                all_compliant = all(
+                    param_compliant_map.get(tool, False) 
+                    for tool in pattern_tools
+                )
+                
+                if all_compliant:
+                    # 所有相关工具都参数合规，跳过告警
+                    return {
+                        "matched": False,
+                        "skipped": True,
+                        "skip_reason": f"链模式 {pattern.get('name', 'unknown')} 匹配，但相关工具参数均合规",
+                        "pattern": {
+                            "name": pattern.get("name", "unknown"),
+                            "tools": pattern["tools"],
+                            "risk": pattern.get("risk", "medium"),
+                            "description": pattern.get("description", ""),
+                            "recommendation": pattern.get("remediation", "")
+                        },
+                        "chain": tool_names
+                    }
+                
                 return {
                     "matched": True,
+                    "skipped": False,
                     "pattern": {
                         "name": pattern.get("name", "unknown"),
                         "tools": pattern["tools"],
@@ -68,7 +98,7 @@ class ChainMatcher:
                     "chain": tool_names
                 }
 
-        return {"matched": False}
+        return {"matched": False, "skipped": False}
 
     def _subsequence_match(
         self,
@@ -121,20 +151,22 @@ class ChainMatcher:
             buffer: 工具调用序列
             pattern: 危险模式
             start_idx: 起始位置
-            max_gap: 最大允许间隔
+            max_gap: 最大允许间隔（从上一个匹配位置计算）
 
         Returns:
             是否匹配成功
         """
         pattern_idx = 0
+        last_match = start_idx  # 记录上一个匹配位置
 
         for i in range(start_idx, len(buffer)):
             if buffer[i] == pattern[pattern_idx]:
                 pattern_idx += 1
+                last_match = i
                 if pattern_idx == len(pattern):
                     return True  # 完全匹配
-            elif i - start_idx > max_gap:
-                # 超过最大间隔，匹配失败
+            elif i - last_match > max_gap:
+                # 从上一个匹配位置计算间隔，超过最大间隔则失败
                 break
 
         return False

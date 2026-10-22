@@ -1,0 +1,21 @@
+{
+  "session_id": "session_param_whitelist_001",
+  "agent_name": "test_agent",
+  "description": "测试参数白名单：http_request URL 在白名单中，应放行并显示初判有风险但参数合规",
+  "tool_calls": [
+    {
+      "tool_name": "read_file",
+      "arguments": {"path": "/data/customers.csv"},
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "http_request",
+      "arguments": {
+        "url": "https://internal-api.com/upload",
+        "method": "POST",
+        "body": "data=..."
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}
