@@ -15,28 +15,30 @@ class ToolClassification(NamedTuple):
 
 
 # 关键风险模式（从ZIRAN的tool_classifier.py借鉴）
+# 使用 (?:^|[\s_-]) 和 (?:$|[\s_-]) 替代 \b，以匹配下划线分隔的工具名
 CRITICAL_PATTERNS = {
-    r"\bexecute[\s_-]?code\b": "Code execution",
-    r"\bshell\b": "Shell command execution",
-    r"\bhttp[\s_-]?request\b": "Outbound HTTP request",
-    r"\bread[\s_-]?env\b": "Environment variable access",
-    r"\bwrite[\s_-]?file\b": "File write capability",
-    r"\bsend[\s_-]?email\b": "Email sending",
-    r"\bdelete[\s_-]?file\b": "File deletion",
+    r"(?:^|[\s_-])execute[\s_-]?code(?:$|[\s_-])": "Code execution",
+    r"(?:^|[\s_-])shell(?:$|[\s_-])": "Shell command execution",
+    r"(?:^|[\s_-])http[\s_-]?request(?:$|[\s_-])": "Outbound HTTP request",
+    r"(?:^|[\s_-])read[\s_-]?env(?:$|[\s_-])": "Environment variable access",
+    r"(?:^|[\s_-])write[\s_-]?file(?:$|[\s_-])": "File write capability",
+    r"(?:^|[\s_-])send[\s_-]?email(?:$|[\s_-])": "Email sending",
+    r"(?:^|[\s_-])delete[\s_-]?file(?:$|[\s_-])": "File deletion",
 }
 
 HIGH_PATTERNS = {
-    r"\bread[\s_-]?file\b": "File read capability",
-    r"\bexecute[\s_-]?sql\b": "SQL execution",
-    r"\bquery[\s_-]?database\b": "Database query",
-    r"\baccess[\s_-]?api\b": "API access",
+    r"(?:^|[\s_-])read[\s_-]?file(?:$|[\s_-])": "File read capability",
+    r"(?:^|[\s_-])execute[\s_-]?sql(?:$|[\s_-])": "SQL execution",
+    r"(?:^|[\s_-])query[\s_-]?database(?:$|[\s_-])": "Database query",
+    r"(?:^|[\s_-])access[\s_-]?api(?:$|[\s_-])": "API access",
 }
 
 MEDIUM_PATTERNS = {
-    r"\bsearch\b": "Search capability",
-    r"\bparse\b": "Data parsing",
-    r"\bcalculate\b": "Calculation",
-    r"\bformat\b": "Data formatting",
+    r"(?:^|[\s_-])search(?:$|[\s_-])": "Search capability",
+    r"(?:^|[\s_-])parse(?:$|[\s_-])": "Data parsing",
+    r"(?:^|[\s_-])calculate(?:$|[\s_-])": "Calculation",
+    r"(?:^|[\s_-])format(?:$|[\s_-])": "Data formatting",
+    r"(?:^|[\s_-])browse[\s_-]?url(?:$|[\s_-])": "URL browsing",
 }
 
 

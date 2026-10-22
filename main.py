@@ -1,8 +1,6 @@
 """
 工具调用链攻击检测系统 - 主程序入口
 
-使用方法：
-    python main.py --input examples/attack_session.json --output reports/security_report.md
 """
 
 import argparse
