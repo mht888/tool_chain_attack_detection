@@ -3,6 +3,7 @@
 """
 
 import uuid
+from datetime import datetime
 
 from src.models.input import ToolCallInput
 from src.models.alert import Alert
@@ -40,9 +41,9 @@ class RealTimeDetector:
         # 会话buffer（维护每个session的工具调用历史）
         self.session_buffers: dict[str, list[ToolCallInput]] = {}
         
-        # 每个工具调用的参数合规状态（buffer索引 -> 是否合规）
-        # 使用索引而非工具名，避免同一工具多次调用时覆盖
-        self.param_compliant_map: dict[int, bool] = {}
+        # 每个session中每个工具调用的参数合规状态
+        # 格式: {session_id: {index: bool}}
+        self.param_compliant_map: dict[str, dict[int, bool]] = {}
         
         # 记录"初判有风险但参数合规"的情况
         self.skipped_chain_warnings: list[dict] = []
@@ -85,9 +86,11 @@ class RealTimeDetector:
             tool_call.arguments
         )
         
-        # 记录参数合规状态（使用buffer索引）
+        # 记录参数合规状态（使用session_id和buffer索引）
         current_index = len(self.session_buffers[session_id]) - 1
-        self.param_compliant_map[current_index] = injection_result.get("param_compliant", True)
+        if session_id not in self.param_compliant_map:
+            self.param_compliant_map[session_id] = {}
+        self.param_compliant_map[session_id][current_index] = injection_result.get("param_compliant", True)
         
         if injection_result["detected"]:
             alerts.append(self._create_alert(
@@ -98,20 +101,24 @@ class RealTimeDetector:
             ))
 
         # 3. 链模式检查
-        chain_result = self.chain_matcher.check(self.session_buffers[session_id], self.param_compliant_map)
-        if chain_result["matched"]:
+        session_compliant_map = self.param_compliant_map.get(session_id, {})
+        chain_result = self.chain_matcher.check(self.session_buffers[session_id], session_compliant_map)
+        
+        # 为每个匹配的危险模式生成告警
+        for pattern_info in chain_result.get("patterns", []):
             alerts.append(self._create_alert(
                 alert_type="DANGEROUS_CHAIN",
-                details=chain_result,
+                details={"pattern": pattern_info},
                 tool_call=tool_call,
                 tool_chain=tool_chain
             ))
-        elif chain_result.get("skipped"):
-            # 记录"初判有风险但参数合规"的情况
+        
+        # 记录"初判有风险但参数合规"的情况
+        for pattern_info in chain_result.get("skipped_patterns", []):
             self.skipped_chain_warnings.append({
                 "tool_name": tool_call.tool_name,
-                "pattern": chain_result.get("pattern", {}),
-                "reason": chain_result.get("skip_reason", ""),
+                "pattern": pattern_info,
+                "reason": f"链模式 {pattern_info.get('name', 'unknown')} 匹配，但相关工具参数均合规",
                 "timestamp": tool_call.timestamp
             })
 
@@ -163,3 +170,30 @@ class RealTimeDetector:
             tool_chain=tool_chain,
             timestamp=tool_call.timestamp
         )
+
+    def cleanup_old_sessions(self, max_age_seconds: int = 3600):
+        """
+        清理过期的 session，防止内存泄漏
+
+        Args:
+            max_age_seconds: session 最大存活时间（秒），默认 1 小时
+        """
+        now = datetime.now()
+        expired_sessions = []
+
+        for session_id, buffer in self.session_buffers.items():
+            if buffer:
+                last_call_time = buffer[-1].timestamp
+                # 处理带时区和不带时区的情况
+                if last_call_time.tzinfo is not None:
+                    last_call_time = last_call_time.replace(tzinfo=None)
+                if (now - last_call_time).total_seconds() > max_age_seconds:
+                    expired_sessions.append(session_id)
+
+        for session_id in expired_sessions:
+            del self.session_buffers[session_id]
+            if session_id in self.param_compliant_map:
+                del self.param_compliant_map[session_id]
+            # 同时清理 frequency_checker 中的时间戳
+            if session_id in self.frequency_checker.call_timestamps:
+                del self.frequency_checker.call_timestamps[session_id]

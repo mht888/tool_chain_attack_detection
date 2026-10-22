@@ -1,7 +1,7 @@
 {
   "session_id": "long_chain_002",
   "agent_name": "test_agent",
-  "description": "长链测试 2 (5个工具): execute_sql → parse_json → calculate → format_text → send_email",
+  "description": "长链测试 2 (5个工具): execute_sql → parse_json → calculate → format_text → search",
   "tool_calls": [
     {
       "tool_name": "execute_sql",
@@ -28,11 +28,8 @@
       "timestamp": "2024-01-15T10:30:15Z"
     },
     {
-      "tool_name": "send_email",
-      "arguments": {
-        "to": "user@example.com",
-        "subject": "Test"
-      },
+      "tool_name": "search",
+      "arguments": {},
       "timestamp": "2024-01-15T10:30:20Z"
     }
   ]

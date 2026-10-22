@@ -49,16 +49,18 @@ class ChainMatcher:
         Returns:
             {
                 "matched": bool,
-                "pattern": dict (如果匹配),
+                "patterns": list[dict] (所有匹配的模式),
                 "chain": list[str],
-                "skipped": bool (是否因参数合规而跳过),
-                "skip_reason": str (跳过原因)
+                "skipped_patterns": list[dict] (因参数合规而跳过的模式),
             }
         """
         if param_compliant_map is None:
             param_compliant_map = {}
         
         tool_names = [tc.tool_name for tc in buffer]
+        
+        matched_patterns = []
+        skipped_patterns = []
 
         for pattern in self.patterns:
             matched_indices = self._subsequence_match_with_indices(tool_names, pattern["tools"])
@@ -69,36 +71,27 @@ class ChainMatcher:
                     for idx in matched_indices
                 )
                 
+                pattern_info = {
+                    "name": pattern.get("name", "unknown"),
+                    "tools": pattern["tools"],
+                    "risk": pattern.get("risk", "medium"),
+                    "description": pattern.get("description", ""),
+                    "recommendation": pattern.get("remediation", ""),
+                    "matched_indices": matched_indices
+                }
+                
                 if all_compliant:
                     # 所有相关工具都参数合规，跳过告警
-                    return {
-                        "matched": False,
-                        "skipped": True,
-                        "skip_reason": f"链模式 {pattern.get('name', 'unknown')} 匹配，但相关工具参数均合规",
-                        "pattern": {
-                            "name": pattern.get("name", "unknown"),
-                            "tools": pattern["tools"],
-                            "risk": pattern.get("risk", "medium"),
-                            "description": pattern.get("description", ""),
-                            "recommendation": pattern.get("remediation", "")
-                        },
-                        "chain": tool_names
-                    }
-                
-                return {
-                    "matched": True,
-                    "skipped": False,
-                    "pattern": {
-                        "name": pattern.get("name", "unknown"),
-                        "tools": pattern["tools"],
-                        "risk": pattern.get("risk", "medium"),
-                        "description": pattern.get("description", ""),
-                        "recommendation": pattern.get("remediation", "")
-                    },
-                    "chain": tool_names
-                }
+                    skipped_patterns.append(pattern_info)
+                else:
+                    matched_patterns.append(pattern_info)
 
-        return {"matched": False, "skipped": False}
+        return {
+            "matched": len(matched_patterns) > 0,
+            "patterns": matched_patterns,
+            "chain": tool_names,
+            "skipped_patterns": skipped_patterns
+        }
 
     def _subsequence_match(
         self,

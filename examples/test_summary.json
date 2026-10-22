@@ -411,35 +411,35 @@
       "browse_url → parse_json → format_text",
       "read_file → search → format_text",
       "execute_sql → calculate → format_text",
-      "read_file → format_text → send_email",
+      "read_file → format_text → calculate",
       "search → calculate → format_text",
       "read_file → parse_json → calculate",
       "browse_url → search → format_text",
-      "execute_sql → format_text → send_email",
+      "execute_sql → format_text → calculate",
       "read_file → search → calculate",
       "search → parse_json → format_text",
-      "read_file → calculate → send_email",
+      "read_file → calculate → format_text",
       "browse_url → calculate → format_text",
       "execute_sql → search → format_text",
       "read_file → parse_json → search",
-      "search → format_text → send_email",
-      "read_file → search → send_email"
+      "search → format_text → calculate",
+      "read_file → search → parse_json"
     ]
   },
   "long_chains": {
     "count": 10,
     "output_dir": "examples/long_chains",
     "chains": [
-      "read_file → parse_json → calculate → format_text → send_email",
-      "execute_sql → parse_json → calculate → format_text → send_email",
+      "read_file → parse_json → calculate → format_text → search",
+      "execute_sql → parse_json → calculate → format_text → search",
       "read_file → search → parse_json → calculate → format_text",
-      "browse_url → parse_json → calculate → format_text → send_email",
-      "read_file → parse_json → search → calculate → format_text → send_email",
-      "execute_sql → search → parse_json → calculate → format_text → send_email",
+      "browse_url → parse_json → calculate → format_text → search",
+      "read_file → parse_json → search → calculate → format_text → browse_url",
+      "execute_sql → search → parse_json → calculate → format_text → browse_url",
       "read_file → search → browse_url → parse_json → calculate → format_text",
-      "read_file → parse_json → calculate → search → format_text → send_email",
-      "execute_sql → parse_json → calculate → search → format_text → send_email",
-      "read_file → search → parse_json → browse_url → calculate → format_text → send_email"
+      "read_file → parse_json → calculate → search → format_text → browse_url",
+      "execute_sql → parse_json → calculate → search → format_text → browse_url",
+      "read_file → search → parse_json → browse_url → calculate → format_text → execute_sql"
     ]
   }
 }

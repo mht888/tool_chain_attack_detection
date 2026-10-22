@@ -1,7 +1,7 @@
 {
   "session_id": "normal_chain_012",
   "agent_name": "test_agent",
-  "description": "正常链测试 12: execute_sql → format_text → send_email",
+  "description": "正常链测试 12: execute_sql → format_text → calculate",
   "tool_calls": [
     {
       "tool_name": "execute_sql",
@@ -16,11 +16,8 @@
       "timestamp": "2024-01-15T10:30:05Z"
     },
     {
-      "tool_name": "send_email",
-      "arguments": {
-        "to": "user@example.com",
-        "subject": "Test"
-      },
+      "tool_name": "calculate",
+      "arguments": {},
       "timestamp": "2024-01-15T10:30:10Z"
     }
   ]

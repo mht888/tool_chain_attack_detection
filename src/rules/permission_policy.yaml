@@ -27,6 +27,10 @@ tool_risk_levels:
   http_request: critical
   read_env: critical
   delete_file: critical
+  python_repl: critical        # 交互式代码执行（等价 execute_code）
+  deploy: critical             # 部署到生产环境
+  run_pipeline: critical       # 触发CI/CD流水线（流水线内可执行任意脚本）
+  write_permissions: critical  # 修改用户权限（直接提权）
 
   # 高风险
   read_file: high
@@ -34,10 +38,22 @@ tool_risk_levels:
   query_database: high
   write_file: high
   send_email: high
+  git_commit: high        # 提交代码（供应链注入入口）
+  generate_token: high    # 生成认证token（认证绕过）
+  read_memory: high       # 读取Agent记忆（含敏感上下文）
+  update_memory: high     # 写Agent记忆（记忆投毒）
+  update_context: high    # 写上下文（上下文注入）
+  get_session: high       # 获取会话信息（会话劫持）
+  read_resource: high     # 读取MCP资源（敏感数据）
+  call_tool: high         # 元工具调用（可间接调用任意工具）
+  screenshot: high        # 截屏（可捕获屏幕敏感信息）
 
   # 中等风险
   search: medium
   browse_url: medium
+  list_directory: medium  # 列目录（侦察）
+  send_message: medium    # 发消息（外泄通道，由链检查兜底）
+  scrape_web: medium       # 爬取网页内容
 
   # 低风险
   parse_json: low
@@ -57,3 +73,5 @@ frequency_limits:
   max_calls_per_minute: 10
   # 每个session每小时最大调用次数
   max_calls_per_hour: 100
+  # 频率统计的时间窗口（秒）
+  window_seconds: 60

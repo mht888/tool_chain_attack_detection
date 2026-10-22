@@ -77,6 +77,9 @@ class RiskScorer:
                 dynamic_bonus = self.risk_weights.get(dynamic_risk, 15)
                 total = base_score + dynamic_bonus
             else:
+                # 确保 risk 有默认值
+                risk = details.get("risk", "medium")
+                risk_bonus = self.risk_weights.get(risk, 15)
                 total = base_score + risk_bonus
         else:
             total = base_score + risk_bonus

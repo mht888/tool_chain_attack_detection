@@ -1,7 +1,7 @@
 {
   "session_id": "normal_chain_020",
   "agent_name": "test_agent",
-  "description": "正常链测试 20: read_file → search → send_email",
+  "description": "正常链测试 20: read_file → search → parse_json",
   "tool_calls": [
     {
       "tool_name": "read_file",
@@ -16,10 +16,9 @@
       "timestamp": "2024-01-15T10:30:05Z"
     },
     {
-      "tool_name": "send_email",
+      "tool_name": "parse_json",
       "arguments": {
-        "to": "user@example.com",
-        "subject": "Test"
+        "data": "{\"key\": \"value\"}"
       },
       "timestamp": "2024-01-15T10:30:10Z"
     }

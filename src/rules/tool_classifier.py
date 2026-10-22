@@ -24,6 +24,12 @@ CRITICAL_PATTERNS = {
     r"(?:^|[\s_-])write[\s_-]?file(?:$|[\s_-])": "File write capability",
     r"(?:^|[\s_-])send[\s_-]?email(?:$|[\s_-])": "Email sending",
     r"(?:^|[\s_-])delete[\s_-]?file(?:$|[\s_-])": "File deletion",
+    # 代码执行/提权/部署类
+    r"(?:^|[\s_-])repl(?:$|[\s_-])": "Interactive code REPL",
+    r"(?:^|[\s_-])execute[\s_-]?(?:script|command|cmd)(?:$|[\s_-])": "Script/command execution",
+    r"(?:^|[\s_-])deploy(?:$|[\s_-])": "Deployment capability",
+    r"(?:^|[\s_-])run[\s_-]?pipeline(?:$|[\s_-])": "CI/CD pipeline execution",
+    r"(?:^|[\s_-])write[\s_-]?permissions?(?:$|[\s_-])": "Permission modification",
 }
 
 HIGH_PATTERNS = {
@@ -31,6 +37,17 @@ HIGH_PATTERNS = {
     r"(?:^|[\s_-])execute[\s_-]?sql(?:$|[\s_-])": "SQL execution",
     r"(?:^|[\s_-])query[\s_-]?database(?:$|[\s_-])": "Database query",
     r"(?:^|[\s_-])access[\s_-]?api(?:$|[\s_-])": "API access",
+    # 敏感数据读写/凭据/元调用类
+    r"(?:^|[\s_-])read[\s_-]?memory(?:$|[\s_-])": "Agent memory read",
+    r"(?:^|[\s_-])update[\s_-]?memory(?:$|[\s_-])": "Agent memory modification",
+    r"(?:^|[\s_-])update[\s_-]?context(?:$|[\s_-])": "Context modification",
+    r"(?:^|[\s_-])get[\s_-]?session(?:$|[\s_-])": "Session data access",
+    r"(?:^|[\s_-])read[\s_-]?resource(?:$|[\s_-])": "Resource read",
+    r"(?:^|[\s_-])call[\s_-]?tool(?:$|[\s_-])": "Meta tool invocation",
+    r"(?:^|[\s_-])generate[\s_-]?token(?:$|[\s_-])": "Authentication token generation",
+    r"(?:^|[\s_-])git[\s_-]?commit(?:$|[\s_-])": "Git commit",
+    r"(?:^|[\s_-])screenshot(?:$|[\s_-])": "Screen capture",
+    r"(?:^|[\s_-])(?:read|fetch|get)[\s_-]?(?:secret|credential|api[\s_-]?key|password)s?(?:$|[\s_-])": "Credential access",
 }
 
 MEDIUM_PATTERNS = {
@@ -39,6 +56,11 @@ MEDIUM_PATTERNS = {
     r"(?:^|[\s_-])calculate(?:$|[\s_-])": "Calculation",
     r"(?:^|[\s_-])format(?:$|[\s_-])": "Data formatting",
     r"(?:^|[\s_-])browse[\s_-]?url(?:$|[\s_-])": "URL browsing",
+    # 侦察/消息类
+    r"(?:^|[\s_-])list[\s_-]?director(?:y|ies)(?:$|[\s_-])": "Directory listing",
+    r"(?:^|[\s_-])(?:list|scan)[\s_-]?files?(?:$|[\s_-])": "File enumeration",
+    r"(?:^|[\s_-])send[\s_-]?\w*[\s_-]?message(?:$|[\s_-])": "Message sending",
+    r"(?:^|[\s_-])scrape(?:$|[\s_-])": "Web scraping",
 }
 
 
@@ -68,4 +90,4 @@ def classify_tool(tool_name: str) -> ToolClassification:
             return ToolClassification(risk="medium", description=description)
 
     # 默认low级别
-    return ToolClassification(risk="low", description="Unknown tool")
+    return ToolClassification(risk="medium", description="Unknown tool")

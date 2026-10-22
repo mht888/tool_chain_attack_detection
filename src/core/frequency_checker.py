@@ -32,9 +32,10 @@ class FrequencyChecker:
         # 频率限制配置
         frequency_limits = policy.get("frequency_limits", {})
         self.max_calls_per_minute = frequency_limits.get("max_calls_per_minute", 10)
-        
-        # 时间窗口（秒）
-        self.window_seconds = 60
+        self.window_seconds = frequency_limits.get("window_seconds", 60)
+
+        # 工具风险等级配置（优先于正则动态分类）
+        self.tool_risk_levels = policy.get("tool_risk_levels", {})
         
         # 根据工具风险等级设置差异化阈值（基于 max_calls_per_minute）
         self.risk_thresholds = {
@@ -99,9 +100,12 @@ class FrequencyChecker:
         # 检查该工具的调用频率
         calls_in_window = len(self.call_timestamps[session_id][tool_name])
 
-        # 根据工具风险等级获取阈值
-        classification = classify_tool(tool_name)
-        max_allowed = self.risk_thresholds.get(classification.risk, 10)
+        # 根据工具风险等级获取阈值：优先查 YAML 配置，未配置的工具用动态分类兜底
+        if tool_name in self.tool_risk_levels:
+            tool_risk = self.tool_risk_levels[tool_name]
+        else:
+            tool_risk = classify_tool(tool_name).risk
+        max_allowed = self.risk_thresholds.get(tool_risk, 10)
 
         if calls_in_window > max_allowed:
             return {
@@ -109,7 +113,7 @@ class FrequencyChecker:
                 "calls_in_window": calls_in_window,
                 "window_seconds": self.window_seconds,
                 "max_allowed": max_allowed,
-                "tool_risk": classification.risk,
+                "tool_risk": tool_risk,
                 "risk": "medium"
             }
 

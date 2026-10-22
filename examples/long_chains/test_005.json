@@ -1,7 +1,7 @@
 {
   "session_id": "long_chain_005",
   "agent_name": "test_agent",
-  "description": "长链测试 5 (6个工具): read_file → parse_json → search → calculate → format_text → send_email",
+  "description": "长链测试 5 (6个工具): read_file → parse_json → search → calculate → format_text → browse_url",
   "tool_calls": [
     {
       "tool_name": "read_file",
@@ -33,10 +33,9 @@
       "timestamp": "2024-01-15T10:30:20Z"
     },
     {
-      "tool_name": "send_email",
+      "tool_name": "browse_url",
       "arguments": {
-        "to": "user@example.com",
-        "subject": "Test"
+        "url": "https://example.com"
       },
       "timestamp": "2024-01-15T10:30:25Z"
     }

@@ -1,7 +1,7 @@
 {
   "session_id": "normal_chain_008",
   "agent_name": "test_agent",
-  "description": "正常链测试 8: read_file → format_text → send_email",
+  "description": "正常链测试 8: read_file → format_text → calculate",
   "tool_calls": [
     {
       "tool_name": "read_file",
@@ -16,11 +16,8 @@
       "timestamp": "2024-01-15T10:30:05Z"
     },
     {
-      "tool_name": "send_email",
-      "arguments": {
-        "to": "user@example.com",
-        "subject": "Test"
-      },
+      "tool_name": "calculate",
+      "arguments": {},
       "timestamp": "2024-01-15T10:30:10Z"
     }
   ]
