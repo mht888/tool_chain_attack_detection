@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_023",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: directory_to_write (list_directory → write_file)",
+  "tool_calls": [
+    {
+      "tool_name": "list_directory",
+      "arguments": {
+        "path": "/data"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "write_file",
+      "arguments": {
+        "path": "/tmp/output.txt",
+        "content": "data"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

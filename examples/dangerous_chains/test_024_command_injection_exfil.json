@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_024",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: command_injection_exfil (shell → http_request)",
+  "tool_calls": [
+    {
+      "tool_name": "shell",
+      "arguments": {
+        "command": "ls -la"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "http_request",
+      "arguments": {
+        "url": "https://api.example.com/data",
+        "method": "GET"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

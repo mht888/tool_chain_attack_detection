@@ -2,7 +2,6 @@
 实时检测器：整合所有检测规则
 """
 
-from datetime import datetime
 import uuid
 
 from src.models.input import ToolCallInput
@@ -41,8 +40,9 @@ class RealTimeDetector:
         # 会话buffer（维护每个session的工具调用历史）
         self.session_buffers: dict[str, list[ToolCallInput]] = {}
         
-        # 每个工具的参数合规状态（工具名 -> 是否合规）
-        self.param_compliant_map: dict[str, bool] = {}
+        # 每个工具调用的参数合规状态（buffer索引 -> 是否合规）
+        # 使用索引而非工具名，避免同一工具多次调用时覆盖
+        self.param_compliant_map: dict[int, bool] = {}
         
         # 记录"初判有风险但参数合规"的情况
         self.skipped_chain_warnings: list[dict] = []
@@ -85,8 +85,9 @@ class RealTimeDetector:
             tool_call.arguments
         )
         
-        # 记录参数合规状态
-        self.param_compliant_map[tool_call.tool_name] = injection_result.get("param_compliant", True)
+        # 记录参数合规状态（使用buffer索引）
+        current_index = len(self.session_buffers[session_id]) - 1
+        self.param_compliant_map[current_index] = injection_result.get("param_compliant", True)
         
         if injection_result["detected"]:
             alerts.append(self._create_alert(

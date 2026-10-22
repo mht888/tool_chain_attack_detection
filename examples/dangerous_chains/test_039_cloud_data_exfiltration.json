@@ -1,0 +1,23 @@
+{
+  "session_id": "dangerous_chain_039",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: cloud_data_exfiltration (query_database → http_request)",
+  "tool_calls": [
+    {
+      "tool_name": "query_database",
+      "arguments": {
+        "db": "main",
+        "query": "SELECT 1"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "http_request",
+      "arguments": {
+        "url": "https://api.example.com/data",
+        "method": "GET"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

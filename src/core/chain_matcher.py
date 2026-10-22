@@ -38,13 +38,13 @@ class ChainMatcher:
             print(f"警告: 加载模式库失败: {e}")
             return []
 
-    def check(self, buffer: list[ToolCallInput], param_compliant_map: dict[str, bool] = None) -> dict[str, Any]:
+    def check(self, buffer: list[ToolCallInput], param_compliant_map: dict[int, bool] = None) -> dict[str, Any]:
         """
         检查buffer中是否包含危险链
 
         Args:
             buffer: 工具调用历史
-            param_compliant_map: 工具名到参数合规状态的映射
+            param_compliant_map: buffer索引到参数合规状态的映射
 
         Returns:
             {
@@ -61,12 +61,12 @@ class ChainMatcher:
         tool_names = [tc.tool_name for tc in buffer]
 
         for pattern in self.patterns:
-            if self._subsequence_match(tool_names, pattern["tools"]):
-                # 检查相关工具是否已标记参数合规
-                pattern_tools = pattern["tools"]
+            matched_indices = self._subsequence_match_with_indices(tool_names, pattern["tools"])
+            if matched_indices:
+                # 检查匹配到的工具是否都已参数合规
                 all_compliant = all(
-                    param_compliant_map.get(tool, False) 
-                    for tool in pattern_tools
+                    param_compliant_map.get(idx, False) 
+                    for idx in matched_indices
                 )
                 
                 if all_compliant:
@@ -109,7 +109,6 @@ class ChainMatcher:
         """
         子序列匹配算法（核心）
 
-        从Pipelock的Go代码翻译而来。
         不要求连续，但要求顺序，且中间间隔不超过max_gap。
 
         Args:
@@ -120,11 +119,31 @@ class ChainMatcher:
         Returns:
             是否匹配
         """
+        indices = self._subsequence_match_with_indices(buffer, pattern, max_gap)
+        return indices is not None
+
+    def _subsequence_match_with_indices(
+        self,
+        buffer: list[str],
+        pattern: list[str],
+        max_gap: int = 5
+    ) -> list[int] | None:
+        """
+        子序列匹配算法，返回匹配到的索引列表
+
+        Args:
+            buffer: 工具调用序列
+            pattern: 危险模式（工具列表）
+            max_gap: 最大允许间隔
+
+        Returns:
+            匹配到的索引列表，如果未匹配则返回 None
+        """
         if len(pattern) == 0:
-            return False
+            return None
 
         if len(buffer) < len(pattern):
-            return False
+            return None
 
         # 从每个可能的起始位置尝试匹配
         for start_idx in range(len(buffer)):
@@ -132,10 +151,11 @@ class ChainMatcher:
                 continue
 
             # 从start_idx开始匹配
-            if self._match_from_position(buffer, pattern, start_idx, max_gap):
-                return True
+            indices = self._match_from_position_with_indices(buffer, pattern, start_idx, max_gap)
+            if indices:
+                return indices
 
-        return False
+        return None
 
     def _match_from_position(
         self,
@@ -156,17 +176,41 @@ class ChainMatcher:
         Returns:
             是否匹配成功
         """
+        indices = self._match_from_position_with_indices(buffer, pattern, start_idx, max_gap)
+        return indices is not None
+
+    def _match_from_position_with_indices(
+        self,
+        buffer: list[str],
+        pattern: list[str],
+        start_idx: int,
+        max_gap: int
+    ) -> list[int] | None:
+        """
+        从指定位置开始匹配，返回匹配到的索引列表
+
+        Args:
+            buffer: 工具调用序列
+            pattern: 危险模式
+            start_idx: 起始位置
+            max_gap: 最大允许间隔（从上一个匹配位置计算）
+
+        Returns:
+            匹配到的索引列表，如果未匹配则返回 None
+        """
         pattern_idx = 0
         last_match = start_idx  # 记录上一个匹配位置
+        matched_indices = []
 
         for i in range(start_idx, len(buffer)):
             if buffer[i] == pattern[pattern_idx]:
                 pattern_idx += 1
                 last_match = i
+                matched_indices.append(i)
                 if pattern_idx == len(pattern):
-                    return True  # 完全匹配
+                    return matched_indices  # 完全匹配
             elif i - last_match > max_gap:
                 # 从上一个匹配位置计算间隔，超过最大间隔则失败
                 break
 
-        return False
+        return None

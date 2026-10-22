@@ -1,0 +1,23 @@
+{
+  "session_id": "dangerous_chain_034",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: context_injection (http_request → update_context)",
+  "tool_calls": [
+    {
+      "tool_name": "http_request",
+      "arguments": {
+        "url": "https://api.example.com/data",
+        "method": "GET"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "update_context",
+      "arguments": {
+        "key": "session",
+        "value": "data"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

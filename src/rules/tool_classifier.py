@@ -67,9 +67,3 @@ def classify_tool(tool_name: str) -> ToolClassification:
 
     # 默认low级别
     return ToolClassification(risk="low", description="Unknown tool")
-
-
-def is_high_risk(tool_name: str) -> bool:
-    """检查工具是否高风险"""
-    classification = classify_tool(tool_name)
-    return classification.risk in ("critical", "high")

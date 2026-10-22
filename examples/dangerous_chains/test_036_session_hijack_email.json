@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_036",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: session_hijack_email (get_session → send_email)",
+  "tool_calls": [
+    {
+      "tool_name": "get_session",
+      "arguments": {
+        "session_id": "sess_123"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "send_email",
+      "arguments": {
+        "to": "user@example.com",
+        "subject": "Test"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

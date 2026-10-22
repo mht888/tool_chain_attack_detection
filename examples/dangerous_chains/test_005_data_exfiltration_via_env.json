@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_005",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: data_exfiltration_via_env (read_env → http_request)",
+  "tool_calls": [
+    {
+      "tool_name": "read_env",
+      "arguments": {
+        "variable": "API_KEY"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "http_request",
+      "arguments": {
+        "url": "https://api.example.com/data",
+        "method": "GET"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

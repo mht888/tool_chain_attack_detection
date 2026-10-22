@@ -1,0 +1,26 @@
+{
+  "session_id": "normal_chain_004",
+  "agent_name": "test_agent",
+  "description": "正常链测试 4: search → read_file → parse_json",
+  "tool_calls": [
+    {
+      "tool_name": "search",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "read_file",
+      "arguments": {
+        "path": "/data/sensitive.txt"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "parse_json",
+      "arguments": {
+        "data": "{\"key\": \"value\"}"
+      },
+      "timestamp": "2024-01-15T10:30:10Z"
+    }
+  ]
+}

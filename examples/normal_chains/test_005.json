@@ -1,0 +1,26 @@
+{
+  "session_id": "normal_chain_005",
+  "agent_name": "test_agent",
+  "description": "正常链测试 5: browse_url → parse_json → format_text",
+  "tool_calls": [
+    {
+      "tool_name": "browse_url",
+      "arguments": {
+        "url": "https://example.com"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "parse_json",
+      "arguments": {
+        "data": "{\"key\": \"value\"}"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "format_text",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:10Z"
+    }
+  ]
+}

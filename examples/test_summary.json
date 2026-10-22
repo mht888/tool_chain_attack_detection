@@ -1,0 +1,445 @@
+{
+  "dangerous_chains": {
+    "count": 56,
+    "output_dir": "examples/dangerous_chains",
+    "patterns": [
+      {
+        "name": "data_exfiltration_basic",
+        "tools": [
+          "read_file",
+          "http_request"
+        ]
+      },
+      {
+        "name": "data_exfiltration_via_email",
+        "tools": [
+          "read_file",
+          "send_email"
+        ]
+      },
+      {
+        "name": "data_exfiltration_via_sql",
+        "tools": [
+          "execute_sql",
+          "http_request"
+        ]
+      },
+      {
+        "name": "data_exfiltration_via_sql_email",
+        "tools": [
+          "execute_sql",
+          "send_email"
+        ]
+      },
+      {
+        "name": "data_exfiltration_via_env",
+        "tools": [
+          "read_env",
+          "http_request"
+        ]
+      },
+      {
+        "name": "data_exfiltration_via_env_email",
+        "tools": [
+          "read_env",
+          "send_email"
+        ]
+      },
+      {
+        "name": "data_exfiltration_complex",
+        "tools": [
+          "read_file",
+          "parse_json",
+          "http_request"
+        ]
+      },
+      {
+        "name": "sql_to_rce",
+        "tools": [
+          "execute_sql",
+          "shell"
+        ]
+      },
+      {
+        "name": "file_to_shell",
+        "tools": [
+          "read_file",
+          "shell"
+        ]
+      },
+      {
+        "name": "code_execution_chain",
+        "tools": [
+          "read_file",
+          "execute_code"
+        ]
+      },
+      {
+        "name": "dynamic_code_execution",
+        "tools": [
+          "http_request",
+          "execute_code"
+        ]
+      },
+      {
+        "name": "code_to_shell",
+        "tools": [
+          "execute_code",
+          "shell"
+        ]
+      },
+      {
+        "name": "code_exfiltration",
+        "tools": [
+          "execute_code",
+          "http_request"
+        ]
+      },
+      {
+        "name": "privilege_escalation_basic",
+        "tools": [
+          "read_file",
+          "write_file",
+          "shell"
+        ]
+      },
+      {
+        "name": "privilege_escalation_via_config",
+        "tools": [
+          "read_file",
+          "write_file",
+          "execute_code"
+        ]
+      },
+      {
+        "name": "privilege_escalation_via_db",
+        "tools": [
+          "execute_sql",
+          "write_file"
+        ]
+      },
+      {
+        "name": "privilege_escalation_via_info",
+        "tools": [
+          "read_file",
+          "write_permissions"
+        ]
+      },
+      {
+        "name": "privilege_escalation_via_query",
+        "tools": [
+          "execute_sql",
+          "write_permissions"
+        ]
+      },
+      {
+        "name": "file_overwrite",
+        "tools": [
+          "http_request",
+          "write_file"
+        ]
+      },
+      {
+        "name": "sensitive_file_access",
+        "tools": [
+          "read_file",
+          "write_file"
+        ]
+      },
+      {
+        "name": "file_deletion_chain",
+        "tools": [
+          "read_file",
+          "delete_file"
+        ]
+      },
+      {
+        "name": "directory_traversal",
+        "tools": [
+          "list_directory",
+          "read_file"
+        ]
+      },
+      {
+        "name": "directory_to_write",
+        "tools": [
+          "list_directory",
+          "write_file"
+        ]
+      },
+      {
+        "name": "command_injection_exfil",
+        "tools": [
+          "shell",
+          "http_request"
+        ]
+      },
+      {
+        "name": "command_injection_persist",
+        "tools": [
+          "shell",
+          "write_file"
+        ]
+      },
+      {
+        "name": "remote_code_execution_via_shell",
+        "tools": [
+          "http_request",
+          "shell"
+        ]
+      },
+      {
+        "name": "env_to_rce",
+        "tools": [
+          "read_env",
+          "execute_code"
+        ]
+      },
+      {
+        "name": "authentication_bypass_via_info",
+        "tools": [
+          "read_file",
+          "generate_token"
+        ]
+      },
+      {
+        "name": "authentication_bypass_via_config",
+        "tools": [
+          "read_env",
+          "generate_token"
+        ]
+      },
+      {
+        "name": "authentication_bypass_via_db",
+        "tools": [
+          "execute_sql",
+          "generate_token"
+        ]
+      },
+      {
+        "name": "data_poisoning_via_file",
+        "tools": [
+          "write_file",
+          "read_file"
+        ]
+      },
+      {
+        "name": "data_poisoning_via_db",
+        "tools": [
+          "http_request",
+          "execute_sql"
+        ]
+      },
+      {
+        "name": "memory_poisoning",
+        "tools": [
+          "http_request",
+          "update_memory"
+        ]
+      },
+      {
+        "name": "context_injection",
+        "tools": [
+          "http_request",
+          "update_context"
+        ]
+      },
+      {
+        "name": "session_hijack_exfil",
+        "tools": [
+          "get_session",
+          "http_request"
+        ]
+      },
+      {
+        "name": "session_hijack_email",
+        "tools": [
+          "get_session",
+          "send_email"
+        ]
+      },
+      {
+        "name": "mcp_resource_exfiltration",
+        "tools": [
+          "read_resource",
+          "send_message"
+        ]
+      },
+      {
+        "name": "mcp_tool_abuse",
+        "tools": [
+          "call_tool",
+          "http_request"
+        ]
+      },
+      {
+        "name": "cloud_data_exfiltration",
+        "tools": [
+          "query_database",
+          "http_request"
+        ]
+      },
+      {
+        "name": "supply_chain_injection",
+        "tools": [
+          "git_commit",
+          "deploy"
+        ]
+      },
+      {
+        "name": "git_to_rce",
+        "tools": [
+          "git_commit",
+          "shell"
+        ]
+      },
+      {
+        "name": "pipeline_to_rce",
+        "tools": [
+          "run_pipeline",
+          "shell"
+        ]
+      },
+      {
+        "name": "env_secret_persist",
+        "tools": [
+          "read_env",
+          "write_file"
+        ]
+      },
+      {
+        "name": "browser_data_exfiltration",
+        "tools": [
+          "browse_url",
+          "http_request"
+        ]
+      },
+      {
+        "name": "scraping_to_external",
+        "tools": [
+          "scrape_web",
+          "http_request"
+        ]
+      },
+      {
+        "name": "web_content_persist",
+        "tools": [
+          "browse_url",
+          "write_file"
+        ]
+      },
+      {
+        "name": "web_content_to_rce",
+        "tools": [
+          "browse_url",
+          "execute_code"
+        ]
+      },
+      {
+        "name": "web_content_injection",
+        "tools": [
+          "browse_url",
+          "execute_sql"
+        ]
+      },
+      {
+        "name": "screen_data_exfil",
+        "tools": [
+          "screenshot",
+          "http_request"
+        ]
+      },
+      {
+        "name": "screen_data_exfil_email",
+        "tools": [
+          "screenshot",
+          "send_email"
+        ]
+      },
+      {
+        "name": "memory_exfiltration",
+        "tools": [
+          "read_memory",
+          "http_request"
+        ]
+      },
+      {
+        "name": "memory_exfiltration_email",
+        "tools": [
+          "read_memory",
+          "send_email"
+        ]
+      },
+      {
+        "name": "memory_to_rce",
+        "tools": [
+          "update_memory",
+          "execute_code"
+        ]
+      },
+      {
+        "name": "memory_persist",
+        "tools": [
+          "read_memory",
+          "write_file"
+        ]
+      },
+      {
+        "name": "repl_exfiltration",
+        "tools": [
+          "python_repl",
+          "http_request"
+        ]
+      },
+      {
+        "name": "repl_persist",
+        "tools": [
+          "python_repl",
+          "write_file"
+        ]
+      }
+    ]
+  },
+  "normal_chains": {
+    "count": 20,
+    "output_dir": "examples/normal_chains",
+    "chains": [
+      "read_file → parse_json → format_text",
+      "execute_sql → parse_json → format_text",
+      "read_file → calculate → format_text",
+      "search → read_file → parse_json",
+      "browse_url → parse_json → format_text",
+      "read_file → search → format_text",
+      "execute_sql → calculate → format_text",
+      "read_file → format_text → send_email",
+      "search → calculate → format_text",
+      "read_file → parse_json → calculate",
+      "browse_url → search → format_text",
+      "execute_sql → format_text → send_email",
+      "read_file → search → calculate",
+      "search → parse_json → format_text",
+      "read_file → calculate → send_email",
+      "browse_url → calculate → format_text",
+      "execute_sql → search → format_text",
+      "read_file → parse_json → search",
+      "search → format_text → send_email",
+      "read_file → search → send_email"
+    ]
+  },
+  "long_chains": {
+    "count": 10,
+    "output_dir": "examples/long_chains",
+    "chains": [
+      "read_file → parse_json → calculate → format_text → send_email",
+      "execute_sql → parse_json → calculate → format_text → send_email",
+      "read_file → search → parse_json → calculate → format_text",
+      "browse_url → parse_json → calculate → format_text → send_email",
+      "read_file → parse_json → search → calculate → format_text → send_email",
+      "execute_sql → search → parse_json → calculate → format_text → send_email",
+      "read_file → search → browse_url → parse_json → calculate → format_text",
+      "read_file → parse_json → calculate → search → format_text → send_email",
+      "execute_sql → parse_json → calculate → search → format_text → send_email",
+      "read_file → search → parse_json → browse_url → calculate → format_text → send_email"
+    ]
+  }
+}

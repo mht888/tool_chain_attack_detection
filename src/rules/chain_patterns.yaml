@@ -1,12 +1,21 @@
 # 危险工具链模式库
 # 从ZIRAN项目借鉴，包含常见的危险工具组合
+# 共 57 个模式，分为 14 个类别
 
-# 数据外泄类
+# ============================================================
+# 1. 数据外泄类（7 个模式）
+# ============================================================
 - name: data_exfiltration_basic
   tools: ["read_file", "http_request"]
   risk: critical
-  description: 文件内容可能被发送到外部服务器
+  description: 文件内容可能被发送到外部服务器（包括敏感文件、SSH密钥、密码、cookie等）
   remediation: 实施外部URL白名单；验证文件访问范围
+
+- name: data_exfiltration_via_email
+  tools: ["read_file", "send_email"]
+  risk: critical
+  description: 文件内容可能通过邮件发送（包括数据库查询结果、用户信息等）
+  remediation: 限制文件内容通过邮件外传；验证邮件收件人
 
 - name: data_exfiltration_via_sql
   tools: ["execute_sql", "http_request"]
@@ -14,11 +23,23 @@
   description: SQL查询结果可能被发送到外部服务器
   remediation: 限制SQL查询结果的外部传输
 
+- name: data_exfiltration_via_sql_email
+  tools: ["execute_sql", "send_email"]
+  risk: critical
+  description: SQL查询结果可能通过邮件发送
+  remediation: 限制SQL查询结果通过邮件外传
+
 - name: data_exfiltration_via_env
   tools: ["read_env", "http_request"]
   risk: critical
-  description: 环境变量（可能包含密钥）可能被发送到外部服务器
+  description: 环境变量（可能包含密钥、认证token、云凭证等）可能被发送到外部服务器
   remediation: 禁止将环境变量内容发送到外部
+
+- name: data_exfiltration_via_env_email
+  tools: ["read_env", "send_email"]
+  risk: critical
+  description: 环境变量（可能包含密钥、凭证等）可能通过邮件发送
+  remediation: 禁止将环境变量内容通过邮件外传
 
 - name: data_exfiltration_complex
   tools: ["read_file", "parse_json", "http_request"]
@@ -26,18 +47,20 @@
   description: 读取文件后解析并通过HTTP发送
   remediation: 限制数据解析后的外部传输
 
-# 代码执行类
+# ============================================================
+# 2. 代码执行类（6 个模式）
+# ============================================================
 - name: sql_to_rce
   tools: ["execute_sql", "shell"]
   risk: critical
-  description: SQL查询结果可能用于构造shell命令
-  remediation: 禁止将SQL结果用于命令构造
+  description: SQL查询结果可能用于构造shell命令或包含恶意命令
+  remediation: 禁止将SQL结果用于命令构造；对SQL结果进行命令过滤
 
 - name: file_to_shell
   tools: ["read_file", "shell"]
   risk: critical
-  description: 读取的文件内容可能被用于shell命令
-  remediation: 禁止将文件内容用于命令构造
+  description: 读取的文件内容可能被用于shell命令或包含恶意命令
+  remediation: 禁止将文件内容用于命令构造；对shell命令输入进行严格验证
 
 - name: code_execution_chain
   tools: ["read_file", "execute_code"]
@@ -51,7 +74,21 @@
   description: 从外部获取内容并执行
   remediation: 禁止执行来自外部的代码
 
-# 权限提升类
+- name: code_to_shell
+  tools: ["execute_code", "shell"]
+  risk: critical
+  description: 代码执行后进一步调用shell，可能扩大攻击范围
+  remediation: 禁止代码执行结果用于shell命令
+
+- name: code_exfiltration
+  tools: ["execute_code", "http_request"]
+  risk: critical
+  description: 代码执行后将结果发送到外部服务器
+  remediation: 禁止代码执行结果的外部传输
+
+# ============================================================
+# 3. 权限提升类（5 个模式）
+# ============================================================
 - name: privilege_escalation_basic
   tools: ["read_file", "write_file", "shell"]
   risk: critical
@@ -64,23 +101,37 @@
   description: 修改配置文件后执行代码
   remediation: 限制配置文件修改后的代码执行
 
-- name: ssh_key_theft
-  tools: ["read_file", "http_request"]
+- name: privilege_escalation_via_db
+  tools: ["execute_sql", "write_file"]
   risk: critical
-  description: 可能窃取SSH密钥并发送
-  remediation: 限制对密钥文件的访问
+  description: 数据库查询结果写入文件，可能提升权限
+  remediation: 限制数据库结果的文件写入
 
-# 文件系统攻击类
+- name: privilege_escalation_via_info
+  tools: ["read_file", "write_permissions"]
+  risk: critical
+  description: 读取信息后修改权限配置
+  remediation: 限制权限修改操作
+
+- name: privilege_escalation_via_query
+  tools: ["execute_sql", "write_permissions"]
+  risk: critical
+  description: 数据库查询后修改权限配置
+  remediation: 限制数据库查询后的权限修改
+
+# ============================================================
+# 4. 文件系统攻击类（5 个模式）
+# ============================================================
 - name: file_overwrite
   tools: ["http_request", "write_file"]
   risk: high
-  description: 从外部下载内容并写入文件
-  remediation: 限制外部内容的文件写入
+  description: 从外部下载内容并写入文件，可能导致数据污染
+  remediation: 限制外部内容的文件写入；验证外部数据的合法性
 
 - name: sensitive_file_access
   tools: ["read_file", "write_file"]
   risk: high
-  description: 读取并修改敏感文件
+  description: 读取并修改敏感文件（包括会话文件、配置文件等）
   remediation: 限制对敏感文件的写操作
 
 - name: file_deletion_chain
@@ -89,59 +140,111 @@
   description: 读取文件后删除
   remediation: 限制文件删除操作
 
-# 命令注入类
-- name: command_injection_via_input
-  tools: ["read_file", "shell"]
-  risk: critical
-  description: 文件内容可能包含恶意命令
-  remediation: 对shell命令输入进行严格验证
+- name: directory_traversal
+  tools: ["list_directory", "read_file"]
+  risk: medium
+  description: 遍历目录后读取文件，可能访问敏感文件
+  remediation: 限制目录遍历范围
 
-- name: command_injection_via_sql
-  tools: ["execute_sql", "shell"]
-  risk: critical
-  description: SQL结果可能包含恶意命令
-  remediation: 对SQL结果进行命令过滤
-
-# 认证绕过类
-- name: token_theft
-  tools: ["read_env", "http_request"]
-  risk: critical
-  description: 窃取认证token并发送
-  remediation: 限制环境变量的外部传输
-
-- name: password_exfiltration
-  tools: ["read_file", "http_request"]
-  risk: critical
-  description: 读取包含密码的文件并发送
-  remediation: 限制密码文件的外部传输
-
-# 会话劫持类
-- name: session_hijack
-  tools: ["read_file", "write_file"]
+- name: directory_to_write
+  tools: ["list_directory", "write_file"]
   risk: high
-  description: 读取并修改会话文件
-  remediation: 限制会话文件的修改
+  description: 遍历目录后写入文件，可能定位并修改敏感文件
+  remediation: 限制目录遍历后的写操作
 
-- name: cookie_theft
-  tools: ["read_file", "http_request"]
+# ============================================================
+# 5. 命令注入类（4 个模式）
+# ============================================================
+- name: command_injection_exfil
+  tools: ["shell", "http_request"]
   risk: critical
-  description: 窃取cookie并发送
-  remediation: 限制cookie的外部传输
+  description: Shell执行后将结果发送到外部，可能泄露命令输出
+  remediation: 限制shell执行结果的外部传输
 
-# 数据污染类
+- name: command_injection_persist
+  tools: ["shell", "write_file"]
+  risk: critical
+  description: Shell执行后将结果写入文件，可能持久化恶意内容
+  remediation: 限制shell执行结果的文件写入
+
+- name: remote_code_execution_via_shell
+  tools: ["http_request", "shell"]
+  risk: critical
+  description: 从外部获取内容后执行shell命令
+  remediation: 禁止外部内容用于shell命令构造
+
+- name: env_to_rce
+  tools: ["read_env", "execute_code"]
+  risk: critical
+  description: 读取环境变量后执行代码，可能利用凭证执行恶意代码
+  remediation: 禁止环境变量用于代码执行
+
+# ============================================================
+# 6. 认证绕过类（3 个模式）
+# ============================================================
+- name: authentication_bypass_via_info
+  tools: ["read_file", "generate_token"]
+  risk: critical
+  description: 读取信息后生成认证token，可能绕过认证
+  remediation: 限制token生成操作
+
+- name: authentication_bypass_via_config
+  tools: ["read_env", "generate_token"]
+  risk: critical
+  description: 读取环境变量后生成认证token
+  remediation: 限制环境变量用于token生成
+
+- name: authentication_bypass_via_db
+  tools: ["execute_sql", "generate_token"]
+  risk: critical
+  description: 数据库查询后生成认证token
+  remediation: 限制数据库查询后的token生成
+
+# ============================================================
+# 7. 数据污染类（4 个模式）
+# ============================================================
 - name: data_poisoning_via_file
   tools: ["write_file", "read_file"]
   risk: medium
   description: 写入恶意数据后读取
   remediation: 验证文件内容的完整性
 
-- name: data_poisoning_via_http
-  tools: ["http_request", "write_file"]
+- name: data_poisoning_via_db
+  tools: ["http_request", "execute_sql"]
   risk: high
-  description: 从外部获取数据并写入
-  remediation: 验证外部数据的合法性
+  description: 外部数据注入数据库查询
+  remediation: 验证外部数据后再用于数据库操作
 
-# MCP特定模式
+- name: memory_poisoning
+  tools: ["http_request", "update_memory"]
+  risk: high
+  description: 外部数据写入内存/状态，可能污染Agent上下文
+  remediation: 验证外部数据后再更新内存
+
+- name: context_injection
+  tools: ["http_request", "update_context"]
+  risk: high
+  description: 外部数据注入Agent上下文
+  remediation: 验证外部数据后再更新上下文
+
+# ============================================================
+# 8. 会话劫持类（2 个模式）
+# ============================================================
+- name: session_hijack_exfil
+  tools: ["get_session", "http_request"]
+  risk: critical
+  description: 获取会话数据后发送到外部
+  remediation: 限制会话数据的外部传输
+
+- name: session_hijack_email
+  tools: ["get_session", "send_email"]
+  risk: high
+  description: 获取会话数据后通过邮件发送
+  remediation: 限制会话数据通过邮件外传
+
+# ============================================================
+# 9. MCP特定模式（2 个模式）
+# ============================================================
 - name: mcp_resource_exfiltration
   tools: ["read_resource", "send_message"]
   risk: critical
@@ -154,20 +257,45 @@
   description: 调用工具后发送结果到外部
   remediation: 限制工具调用结果的外部传输
 
-# 云服务类
-- name: cloud_credential_theft
-  tools: ["read_env", "http_request"]
-  risk: critical
-  description: 窃取云服务凭证并发送
-  remediation: 限制云凭证的外部传输
-
+# ============================================================
+# 10. 云服务类（1 个模式）
+# ============================================================
 - name: cloud_data_exfiltration
   tools: ["query_database", "http_request"]
   risk: critical
   description: 查询云数据库后发送数据
   remediation: 限制云数据的外部传输
 
-# 浏览器/爬虫类
+# ============================================================
+# 11. CI/CD流水线类（4 个模式）
+# ============================================================
+- name: supply_chain_injection
+  tools: ["git_commit", "deploy"]
+  risk: critical
+  description: Git提交后部署，可能注入恶意代码到生产环境
+  remediation: 限制部署操作的权限
+
+- name: git_to_rce
+  tools: ["git_commit", "shell"]
+  risk: critical
+  description: Git操作后执行shell命令
+  remediation: 禁止Git操作后的命令执行
+
+- name: pipeline_to_rce
+  tools: ["run_pipeline", "shell"]
+  risk: critical
+  description: CI/CD流水线中执行shell命令
+  remediation: 限制流水线中的命令执行
+
+- name: env_secret_persist
+  tools: ["read_env", "write_file"]
+  risk: high
+  description: 环境变量（可能包含密钥）写入文件
+  remediation: 禁止环境变量写入文件
+
+# ============================================================
+# 12. 浏览器/爬虫类（7 个模式）
+# ============================================================
 - name: browser_data_exfiltration
   tools: ["browse_url", "http_request"]
   risk: high
@@ -179,3 +307,75 @@
   risk: high
   description: 爬取网页后发送到外部
   remediation: 限制爬取数据的外部传输
+
+- name: web_content_persist
+  tools: ["browse_url", "write_file"]
+  risk: high
+  description: 浏览网页后将内容写入文件
+  remediation: 限制网页内容的文件写入
+
+- name: web_content_to_rce
+  tools: ["browse_url", "execute_code"]
+  risk: critical
+  description: 浏览网页后执行其中的代码
+  remediation: 禁止网页内容用于代码执行
+
+- name: web_content_injection
+  tools: ["browse_url", "execute_sql"]
+  risk: high
+  description: 浏览网页后将数据注入数据库
+  remediation: 验证网页内容后再用于数据库操作
+
+- name: screen_data_exfil
+  tools: ["screenshot", "http_request"]
+  risk: high
+  description: 截屏后将数据发送到外部
+  remediation: 限制截屏数据的外部传输
+
+- name: screen_data_exfil_email
+  tools: ["screenshot", "send_email"]
+  risk: high
+  description: 截屏后通过邮件发送
+  remediation: 限制截屏数据通过邮件外传
+
+# ============================================================
+# 13. 内存/状态操作类（4 个模式）
+# ============================================================
+- name: memory_exfiltration
+  tools: ["read_memory", "http_request"]
+  risk: critical
+  description: 读取内存/状态数据后发送到外部
+  remediation: 限制内存数据的外部传输
+
+- name: memory_exfiltration_email
+  tools: ["read_memory", "send_email"]
+  risk: critical
+  description: 读取内存/状态数据后通过邮件发送
+  remediation: 限制内存数据通过邮件外传
+
+- name: memory_to_rce
+  tools: ["update_memory", "execute_code"]
+  risk: critical
+  description: 更新内存后执行代码，可能利用注入的恶意数据
+  remediation: 限制内存更新后的代码执行
+
+- name: memory_persist
+  tools: ["read_memory", "write_file"]
+  risk: high
+  description: 读取内存数据后写入文件
+  remediation: 限制内存数据的文件写入
+
+# ============================================================
+# 14. 框架工具类（2 个模式）
+# ============================================================
+- name: repl_exfiltration
+  tools: ["python_repl", "http_request"]
+  risk: critical
+  description: Python REPL执行后将结果发送到外部
+  remediation: 限制REPL执行结果的外部传输
+
+- name: repl_persist
+  tools: ["python_repl", "write_file"]
+  risk: critical
+  description: Python REPL执行后写入文件
+  remediation: 限制REPL执行结果的文件写入

@@ -1,0 +1,25 @@
+{
+  "session_id": "normal_chain_019",
+  "agent_name": "test_agent",
+  "description": "正常链测试 19: search → format_text → send_email",
+  "tool_calls": [
+    {
+      "tool_name": "search",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "format_text",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "send_email",
+      "arguments": {
+        "to": "user@example.com",
+        "subject": "Test"
+      },
+      "timestamp": "2024-01-15T10:30:10Z"
+    }
+  ]
+}

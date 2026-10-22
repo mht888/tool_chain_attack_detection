@@ -1,0 +1,43 @@
+{
+  "session_id": "long_chain_007",
+  "agent_name": "test_agent",
+  "description": "长链测试 7 (6个工具): read_file → search → browse_url → parse_json → calculate → format_text",
+  "tool_calls": [
+    {
+      "tool_name": "read_file",
+      "arguments": {
+        "path": "/data/sensitive.txt"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "search",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "browse_url",
+      "arguments": {
+        "url": "https://example.com"
+      },
+      "timestamp": "2024-01-15T10:30:10Z"
+    },
+    {
+      "tool_name": "parse_json",
+      "arguments": {
+        "data": "{\"key\": \"value\"}"
+      },
+      "timestamp": "2024-01-15T10:30:15Z"
+    },
+    {
+      "tool_name": "calculate",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:20Z"
+    },
+    {
+      "tool_name": "format_text",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:25Z"
+    }
+  ]
+}

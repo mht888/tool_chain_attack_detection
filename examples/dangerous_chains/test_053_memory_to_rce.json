@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_053",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: memory_to_rce (update_memory → execute_code)",
+  "tool_calls": [
+    {
+      "tool_name": "update_memory",
+      "arguments": {
+        "key": "context",
+        "value": "data"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "execute_code",
+      "arguments": {
+        "code": "print('hello')"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

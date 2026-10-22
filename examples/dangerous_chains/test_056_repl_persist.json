@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_056",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: repl_persist (python_repl → write_file)",
+  "tool_calls": [
+    {
+      "tool_name": "python_repl",
+      "arguments": {
+        "code": "print('test')"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "write_file",
+      "arguments": {
+        "path": "/tmp/output.txt",
+        "content": "data"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "session_id": "dangerous_chain_040",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: supply_chain_injection (git_commit → deploy)",
+  "tool_calls": [
+    {
+      "tool_name": "git_commit",
+      "arguments": {
+        "message": "update"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "deploy",
+      "arguments": {
+        "env": "production"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

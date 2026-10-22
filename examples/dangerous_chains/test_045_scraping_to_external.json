@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_045",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: scraping_to_external (scrape_web → http_request)",
+  "tool_calls": [
+    {
+      "tool_name": "scrape_web",
+      "arguments": {
+        "url": "https://example.com"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "http_request",
+      "arguments": {
+        "url": "https://api.example.com/data",
+        "method": "GET"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

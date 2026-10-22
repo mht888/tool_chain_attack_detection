@@ -1,0 +1,22 @@
+{
+  "session_id": "normal_chain_009",
+  "agent_name": "test_agent",
+  "description": "正常链测试 9: search → calculate → format_text",
+  "tool_calls": [
+    {
+      "tool_name": "search",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "calculate",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "format_text",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:10Z"
+    }
+  ]
+}

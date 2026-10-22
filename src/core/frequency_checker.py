@@ -32,7 +32,6 @@ class FrequencyChecker:
         # 频率限制配置
         frequency_limits = policy.get("frequency_limits", {})
         self.max_calls_per_minute = frequency_limits.get("max_calls_per_minute", 10)
-        self.max_calls_per_hour = frequency_limits.get("max_calls_per_hour", 100)
         
         # 时间窗口（秒）
         self.window_seconds = 60

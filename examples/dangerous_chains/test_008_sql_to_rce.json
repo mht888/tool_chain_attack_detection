@@ -1,0 +1,21 @@
+{
+  "session_id": "dangerous_chain_008",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: sql_to_rce (execute_sql → shell)",
+  "tool_calls": [
+    {
+      "tool_name": "execute_sql",
+      "arguments": {
+        "query": "SELECT * FROM users"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "shell",
+      "arguments": {
+        "command": "ls -la"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

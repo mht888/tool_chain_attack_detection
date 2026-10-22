@@ -1,0 +1,22 @@
+{
+  "session_id": "dangerous_chain_046",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: web_content_persist (browse_url → write_file)",
+  "tool_calls": [
+    {
+      "tool_name": "browse_url",
+      "arguments": {
+        "url": "https://example.com"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "write_file",
+      "arguments": {
+        "path": "/tmp/output.txt",
+        "content": "data"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}

@@ -26,9 +26,6 @@ class PermissionChecker:
         
         # 加载工具风险等级配置
         self.tool_risk_levels = self.policy.get("tool_risk_levels", {})
-        
-        # 加载风险阈值配置
-        self.risk_thresholds = self.policy.get("risk_thresholds", {})
 
     def _load_policy(self, path: str) -> dict[str, Any]:
         """加载权限策略"""
@@ -65,6 +62,7 @@ class PermissionChecker:
             return {
                 "allowed": False,
                 "blocked": True,  # 黑名单工具直接阻断
+                "tool_name": tool_name,
                 "reason": f"工具 {tool_name} 在黑名单中",
                 "risk": "critical",
                 "risk_note": f"工具 {tool_name} 被明确禁止"
@@ -85,6 +83,7 @@ class PermissionChecker:
             return {
                 "allowed": True,  # 允许，但标记风险
                 "blocked": False,
+                "tool_name": tool_name,
                 "reason": f"工具 {tool_name} 不在白名单中",
                 "risk": risk,
                 "risk_note": risk_note
@@ -94,5 +93,6 @@ class PermissionChecker:
         return {
             "allowed": True,
             "blocked": False,
+            "tool_name": tool_name,
             "risk_note": None
         }

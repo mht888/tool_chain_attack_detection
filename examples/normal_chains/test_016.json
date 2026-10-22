@@ -1,0 +1,24 @@
+{
+  "session_id": "normal_chain_016",
+  "agent_name": "test_agent",
+  "description": "正常链测试 16: browse_url → calculate → format_text",
+  "tool_calls": [
+    {
+      "tool_name": "browse_url",
+      "arguments": {
+        "url": "https://example.com"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "calculate",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "format_text",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:10Z"
+    }
+  ]
+}

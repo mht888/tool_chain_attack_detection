@@ -1,0 +1,27 @@
+{
+  "session_id": "normal_chain_012",
+  "agent_name": "test_agent",
+  "description": "正常链测试 12: execute_sql → format_text → send_email",
+  "tool_calls": [
+    {
+      "tool_name": "execute_sql",
+      "arguments": {
+        "query": "SELECT * FROM users"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "format_text",
+      "arguments": {},
+      "timestamp": "2024-01-15T10:30:05Z"
+    },
+    {
+      "tool_name": "send_email",
+      "arguments": {
+        "to": "user@example.com",
+        "subject": "Test"
+      },
+      "timestamp": "2024-01-15T10:30:10Z"
+    }
+  ]
+}

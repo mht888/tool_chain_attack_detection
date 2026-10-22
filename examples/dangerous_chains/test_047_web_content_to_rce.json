@@ -1,0 +1,21 @@
+{
+  "session_id": "dangerous_chain_047",
+  "agent_name": "test_agent",
+  "description": "危险链模式测试: web_content_to_rce (browse_url → execute_code)",
+  "tool_calls": [
+    {
+      "tool_name": "browse_url",
+      "arguments": {
+        "url": "https://example.com"
+      },
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "tool_name": "execute_code",
+      "arguments": {
+        "code": "print('hello')"
+      },
+      "timestamp": "2024-01-15T10:30:05Z"
+    }
+  ]
+}
