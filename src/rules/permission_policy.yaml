@@ -12,15 +12,12 @@ allowed_tools:
   - query_database
   - browse_url
 
-# 黑名单：禁止使用的工具
+# 黑名单：禁止使用的工具（仅保留真正不该出现的工具）
+# shell、http_request、write_file、read_env 等从黑名单移除，
+# 交由链模式检查和注入检查来判断是否危险
 forbidden_tools:
-  - shell
   - execute_code
-  - http_request
-  - delete_file
-  - write_file
   - send_email
-  - read_env
 
 # 工具风险等级
 tool_risk_levels:

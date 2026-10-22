@@ -3,7 +3,6 @@
 """
 
 from datetime import datetime
-from typing import Optional
 import uuid
 
 from src.models.input import ToolCallInput
@@ -42,7 +41,7 @@ class RealTimeDetector:
         # 会话buffer（维护每个session的工具调用历史）
         self.session_buffers: dict[str, list[ToolCallInput]] = {}
 
-    def on_tool_call(self, tool_call: ToolCallInput) -> Optional[Alert]:
+    def on_tool_call(self, tool_call: ToolCallInput) -> list[Alert]:
         """
         处理一次工具调用
 
@@ -50,7 +49,7 @@ class RealTimeDetector:
             tool_call: 工具调用输入
 
         Returns:
-            如果检测到威胁，返回Alert；否则返回None
+            检测到的告警列表（可能为空）
         """
         session_id = tool_call.session_id or "default"
 
@@ -59,15 +58,20 @@ class RealTimeDetector:
             self.session_buffers[session_id] = []
         self.session_buffers[session_id].append(tool_call)
 
-        # 1. 权限检查
+        alerts: list[Alert] = []
+        tool_chain = [tc.tool_name for tc in self.session_buffers[session_id]]
+
+        # 1. 权限检查（仅对黑名单工具阻断）
         perm_result = self.permission_checker.check(tool_call.tool_name)
-        if not perm_result["allowed"]:
-            return self._create_alert(
+        if perm_result.get("blocked"):
+            alerts.append(self._create_alert(
                 alert_type="PERMISSION_VIOLATION",
                 details=perm_result,
                 tool_call=tool_call,
-                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
-            )
+                tool_chain=tool_chain
+            ))
+            # 黑名单工具直接阻断，不再执行后续检查
+            return alerts
 
         # 2. 参数注入检查
         injection_result = self.injection_checker.check(
@@ -75,35 +79,35 @@ class RealTimeDetector:
             tool_call.arguments
         )
         if injection_result["detected"]:
-            return self._create_alert(
+            alerts.append(self._create_alert(
                 alert_type="INJECTION_DETECTED",
                 details=injection_result,
                 tool_call=tool_call,
-                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
-            )
+                tool_chain=tool_chain
+            ))
 
         # 3. 链模式检查
         chain_result = self.chain_matcher.check(self.session_buffers[session_id])
         if chain_result["matched"]:
-            return self._create_alert(
+            alerts.append(self._create_alert(
                 alert_type="DANGEROUS_CHAIN",
                 details=chain_result,
                 tool_call=tool_call,
-                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
-            )
+                tool_chain=tool_chain
+            ))
 
         # 4. 频率检查
         freq_result = self.frequency_checker.check(session_id, tool_call)
         if freq_result["anomaly"]:
-            return self._create_alert(
+            alerts.append(self._create_alert(
                 alert_type="FREQUENCY_ANOMALY",
                 details=freq_result,
                 tool_call=tool_call,
-                tool_chain=[tc.tool_name for tc in self.session_buffers[session_id]]
-            )
+                tool_chain=tool_chain
+            ))
 
-        # 所有检查通过
-        return None
+        # 返回所有检测到的告警
+        return alerts
 
     def _create_alert(
         self,

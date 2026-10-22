@@ -16,11 +16,13 @@
 本项目借鉴了两个开源项目的核心模块：
 
 ### 1. ZIRAN（Python）
+
 - **借鉴内容**：危险链模式库（100+模式）、工具风险分类器、输入格式
 - **来源**：`ziran/application/knowledge_graph/chain_patterns.yaml`
 - **来源**：`ziran/domain/tool_classifier.py`
 
 ### 2. Pipelock（Go）
+
 - **借鉴内容**：子序列匹配算法
 - **翻译**：将Go代码翻译成Python实现
 - **来源**：`pipelock/internal/mcp/chains/matcher.go`
@@ -80,6 +82,7 @@ python main.py --help
 ```
 
 参数说明：
+
 - `--input`, `-i`: 输入数据路径（JSON格式）
 - `--output`, `-o`: 输出报告路径（Markdown格式）
 - `--rules`, `-r`: 规则配置目录
@@ -169,6 +172,7 @@ def subsequence_match(buffer, pattern, max_gap=5):
 - **MALICIOUS（恶意）**: 70-100分
 
 评分因素：
+
 - 告警类型权重
 - 风险等级加成
 - 链长度加成
@@ -192,3 +196,86 @@ def subsequence_match(buffer, pattern, max_gap=5):
 ## License
 
 MIT License
+
+
+
+
+
+
+
+
+根据之前的代码审查，整理修正方案如下：
+
+The user wants me to organize the improvement plan for the code issues I identified earlier. Let me create a structured plan document.
+
+The user wants me to organize the correction plan for the code issues I identified earlier. Let me create a clear, structured summary of all the problems and their proposed fixes.
+
+## 检测系统问题修正方案
+
+---
+
+### 问题 1（严重）：检测器短路 — 链模式检测形同虚设
+
+**现状**：[detector.py](file:///d:/desktop/tool_chain_attack_detection/src/core/detector.py#L62-L93) 按 权限→注入→链→频率 顺序检查，命中即 `return`。由于 [permission_policy.yaml](file:///d:/desktop/tool_chain_attack_detection/src/rules/permission_policy.yaml#L16-L23) 的黑名单包含 `http_request`、`shell` 等，这些工具一调用就被权限拦截，链模式检测永远不触发。
+
+**修正**：
+
+- 将 `on_tool_call` 改为返回 `list[Alert]`，每个检查器独立产出告警
+- 权限检查改为"标记风险"而非"直接阻断返回"
+- 或调整顺序：先链匹配，再权限检查
+
+---
+
+### 问题 2（严重）：tool_classifier.py 是死代码
+
+**现状**：[tool_classifier.py](file:///d:/desktop/tool_chain_attack_detection/src/rules/tool_classifier.py) 定义了完整的工具风险分类逻辑，但整个项目中没有任何模块 import 它。
+
+**修正**：
+
+- 在 `PermissionChecker` 中集成 `classify_tool()`，对未在 YAML 中配置的工具动态评估风险
+- 在 `FrequencyChecker` 中根据工具风险等级设置差异化阈值
+
+---
+
+### 问题 3（中等）：注入检查不递归检查嵌套参数
+
+**现状**：[injection_checker.py#L38-L40](file:///d:/desktop/tool_chain_attack_detection/src/core/injection_checker.py#L38-L40) 只检查顶层字符串参数，嵌套 dict/list 中的恶意内容被 `continue` 跳过。
+
+**修正**：
+
+- 添加递归遍历函数，对嵌套的 dict 和 list 也提取字符串值进行检测
+
+---
+
+### 问题 4（中等）：max_gap 计算逻辑偏差
+
+**现状**：[chain_matcher.py#L136](file:///d:/desktop/tool_chain_attack_detection/src/core/chain_matcher.py#L136) 中间隔从起始位置算，不是从上一个匹配位置算。模式越长，实际可用窗口越小。
+
+**修正**：
+
+- 改为从上一个匹配成功的元素位置计算间隔
+
+---
+
+### 问题 5（中等）：频率检查不区分工具类型
+
+**现状**：[frequency_checker.py](file:///d:/desktop/tool_chain_attack_detection/src/core/frequency_checker.py#L19) 全局统一阈值 `max_calls=10`，`search` 调 20 次和 `write_file` 调 5 次用同一标准。
+
+**修正**：
+
+- 结合 `tool_classifier` 的风险等级，对 critical 工具设更低阈值（如 3 次），low 工具可放宽
+
+---
+
+### 问题 6（低）：YAML 配置大量字段未被使用
+
+**现状**：[permission_policy.yaml](file:///d:/desktop/tool_chain_attack_detection/src/rules/permission_policy.yaml) 中 `tool_risk_levels`、`risk_thresholds`、`frequency_limits` 均未加载使用，代码中硬编码了阈值。
+
+**修正**：
+
+- 让 `FrequencyChecker` 从 YAML 读取 `frequency_limits`
+- 让 `PermissionChecker` 使用 `tool_risk_levels` 配置
+
+---
+
+需要我开始逐个实现这些修正吗？

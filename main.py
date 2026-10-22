@@ -78,31 +78,31 @@ def run_detection(input_path: str, output_path: str, rules_dir: str = "src/rules
         )
 
         # 执行检测
-        alert = detector.on_tool_call(tool_call)
+        alerts = detector.on_tool_call(tool_call)
 
         # 记录结果
-        if alert:
+        if alerts:
             report.add_tool_call(tool_call.tool_name, tool_call.arguments, blocked=True)
-            report.add_alert(alert)
 
             print(f"  [{i}] 🚫 {tool_call.tool_name}")
-            print(f"      告警类型: {alert.alert_type}")
-            print(f"      风险等级: {alert.risk_level}")
-            print(f"      风险评分: {alert.risk_score}/100")
+            for alert in alerts:
+                report.add_alert(alert)
+                print(f"      告警类型: {alert.alert_type}")
+                print(f"      风险等级: {alert.risk_level}")
+                print(f"      风险评分: {alert.risk_score}/100")
 
-            # 显示详细信息
-            if alert.alert_type == "DANGEROUS_CHAIN":
-                pattern = alert.details.get("pattern", {})
-                print(f"      危险模式: {pattern.get('name', 'unknown')}")
-                print(f"      描述: {pattern.get('description', '')}")
-            elif alert.alert_type == "PERMISSION_VIOLATION":
-                print(f"      原因: {alert.details.get('reason', '')}")
-            elif alert.alert_type == "INJECTION_DETECTED":
-                print(f"      攻击类型: {alert.details.get('attack_type', '')}")
-            elif alert.alert_type == "FREQUENCY_ANOMALY":
-                print(f"      调用频率: {alert.details.get('calls_in_window', 0)}")
-
-            print()
+                # 显示详细信息
+                if alert.alert_type == "DANGEROUS_CHAIN":
+                    pattern = alert.details.get("pattern", {})
+                    print(f"      危险模式: {pattern.get('name', 'unknown')}")
+                    print(f"      描述: {pattern.get('description', '')}")
+                elif alert.alert_type == "PERMISSION_VIOLATION":
+                    print(f"      原因: {alert.details.get('reason', '')}")
+                elif alert.alert_type == "INJECTION_DETECTED":
+                    print(f"      攻击类型: {alert.details.get('attack_type', '')}")
+                elif alert.alert_type == "FREQUENCY_ANOMALY":
+                    print(f"      调用频率: {alert.details.get('calls_in_window', 0)}")
+                print()
         else:
             report.add_tool_call(tool_call.tool_name, tool_call.arguments, blocked=False)
             print(f"  [{i}] ✓ {tool_call.tool_name}")

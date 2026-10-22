@@ -45,8 +45,10 @@ class PermissionChecker:
         Returns:
             {
                 "allowed": bool,
+                "blocked": bool (是否应该阻断),
                 "reason": str (如果不允许),
-                "risk": str
+                "risk": str,
+                "risk_note": str (风险标记，用于后续评分)
             }
         """
         # 检查黑名单
@@ -54,18 +56,27 @@ class PermissionChecker:
         if tool_name in forbidden_tools:
             return {
                 "allowed": False,
+                "blocked": True,  # 黑名单工具直接阻断
                 "reason": f"工具 {tool_name} 在黑名单中",
-                "risk": "critical"
+                "risk": "critical",
+                "risk_note": f"工具 {tool_name} 被明确禁止"
             }
 
         # 检查白名单
         allowed_tools = self.policy.get("allowed_tools", [])
         if allowed_tools and tool_name not in allowed_tools:
+            # 不在白名单中，但不阻断，只标记风险
             return {
-                "allowed": False,
+                "allowed": True,  # 改为允许，但标记风险
+                "blocked": False,
                 "reason": f"工具 {tool_name} 不在白名单中",
-                "risk": "high"
+                "risk": "medium",
+                "risk_note": f"工具 {tool_name} 未在白名单中配置，需关注"
             }
 
         # 通过检查
-        return {"allowed": True}
+        return {
+            "allowed": True,
+            "blocked": False,
+            "risk_note": None
+        }
