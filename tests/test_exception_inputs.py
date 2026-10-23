@@ -276,14 +276,14 @@ class TestExceptionInputs:
 
     def test_chain_matcher_empty_buffer(self):
         """测试链模式匹配器空缓冲区"""
-        matcher = ChainMatcher("src/rules/chain_patterns.yaml")
+        matcher = ChainMatcher("src/rules/capability_chain_patterns.yaml")
         result = matcher.check([], {})
         assert result["matched"] is False
-        assert result["patterns"] == []
+        assert result["capability_patterns"] == []
 
     def test_chain_matcher_single_tool(self):
         """测试链模式匹配器单工具"""
-        matcher = ChainMatcher("src/rules/chain_patterns.yaml")
+        matcher = ChainMatcher("src/rules/capability_chain_patterns.yaml")
         buffer = [ToolCallInput(
             tool_name="read_file",
             arguments={},
@@ -294,7 +294,7 @@ class TestExceptionInputs:
 
     def test_injection_checker_empty_args(self):
         """测试注入检查器空参数"""
-        checker = InjectionChecker("src/rules/param_whitelist.yaml")
+        checker = InjectionChecker("src/rules/param_grading.yaml")
         result = checker.check("read_file", {})
         assert result["detected"] is False
 

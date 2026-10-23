@@ -41,16 +41,16 @@ class TestRiskScorer:
         assert 0 <= score <= 100
         assert score >= 50  # 基础分 50
     
-    def test_dangerous_chain_score(self, scorer):
-        """测试危险链评分"""
+    def test_capability_chain_score(self, scorer):
+        """测试能力链评分"""
         details = {
             "risk": "critical",
             "pattern": {
-                "name": "data_exfiltration",
-                "tools": ["read_file", "http_request"]
+                "name": "private_data_exfiltration",
+                "capabilities": ["PRIVATE_ACCESS", "EXTERNAL_ACTION"]
             }
         }
-        score = scorer.calculate("DANGEROUS_CHAIN", details)
+        score = scorer.calculate("CAPABILITY_CHAIN", details)
         
         assert 0 <= score <= 100
         assert score >= 45  # 基础分 45
@@ -107,10 +107,10 @@ class TestRiskScorer:
         details = {
             "risk": "critical",
             "pattern": {
-                "tools": ["a", "b", "c", "d", "e"]  # 长链
+                "capabilities": ["a", "b", "c", "d", "e"]  # 长能力链
             }
         }
-        score = scorer.calculate("DANGEROUS_CHAIN", details)
+        score = scorer.calculate("CAPABILITY_CHAIN", details)
         assert score <= 100
     
     def test_score_floor_at_0(self, scorer):
@@ -127,22 +127,22 @@ class TestRiskScorer:
         assert 0 <= score <= 100
     
     def test_chain_length_bonus(self, scorer):
-        """测试链长度加分"""
-        # 短链
+        """测试能力链长度加分"""
+        # 短能力链
         details_short = {
             "risk": "medium",
-            "pattern": {"tools": ["a", "b"]}
+            "pattern": {"capabilities": ["a", "b"]}
         }
-        score_short = scorer.calculate("DANGEROUS_CHAIN", details_short)
+        score_short = scorer.calculate("CAPABILITY_CHAIN", details_short)
         
-        # 长链
+        # 长能力链
         details_long = {
             "risk": "medium",
-            "pattern": {"tools": ["a", "b", "c", "d", "e"]}
+            "pattern": {"capabilities": ["a", "b", "c", "d", "e"]}
         }
-        score_long = scorer.calculate("DANGEROUS_CHAIN", details_long)
+        score_long = scorer.calculate("CAPABILITY_CHAIN", details_long)
         
-        # 长链评分应该更高
+        # 长能力链评分应该更高
         assert score_long > score_short
     
     def test_frequency_ratio_bonus(self, scorer):

@@ -43,7 +43,6 @@ HIGH_PATTERNS = {
     r"(?:^|[\s_-])update[\s_-]?context(?:$|[\s_-])": "Context modification",
     r"(?:^|[\s_-])get[\s_-]?session(?:$|[\s_-])": "Session data access",
     r"(?:^|[\s_-])read[\s_-]?resource(?:$|[\s_-])": "Resource read",
-    r"(?:^|[\s_-])call[\s_-]?tool(?:$|[\s_-])": "Meta tool invocation",
     r"(?:^|[\s_-])generate[\s_-]?token(?:$|[\s_-])": "Authentication token generation",
     r"(?:^|[\s_-])git[\s_-]?commit(?:$|[\s_-])": "Git commit",
     r"(?:^|[\s_-])screenshot(?:$|[\s_-])": "Screen capture",
@@ -90,4 +89,4 @@ def classify_tool(tool_name: str) -> ToolClassification:
             return ToolClassification(risk="medium", description=description)
 
     # 默认low级别
-    return ToolClassification(risk="medium", description="Unknown tool")
+    return ToolClassification(risk="low", description="Unknown tool")

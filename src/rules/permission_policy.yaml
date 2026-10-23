@@ -1,23 +1,16 @@
 # 权限策略配置
 # 定义agent可以使用的工具和风险等级
 
-# 白名单：允许使用的工具
-allowed_tools:
-  - read_file
-  - execute_sql
-  - search
-  - parse_json
-  - calculate
-  - format_text
-  - query_database
-  - browse_url
-
-# 黑名单：禁止使用的工具（仅保留真正不该出现的工具）
-# shell、http_request、write_file、read_env 等从黑名单移除，
-# 交由链模式检查和注入检查来判断是否危险
+# 黑名单：完全禁止执行的工具（命中即阻断，不做后续检查）
+# 不设白名单：非黑名单工具一律放行，
+# 交由注入检查、链模式检查、频率检查进一步判断
 forbidden_tools:
   - execute_code
   - send_email
+  - python_repl        # 交互式代码执行（等价 execute_code）
+  - deploy             # 部署到生产环境
+  - run_pipeline       # 触发CI/CD流水线（流水线内可执行任意脚本）
+  - write_permissions  # 修改用户权限（直接提权）
 
 # 工具风险等级
 tool_risk_levels:
@@ -45,8 +38,8 @@ tool_risk_levels:
   update_context: high    # 写上下文（上下文注入）
   get_session: high       # 获取会话信息（会话劫持）
   read_resource: high     # 读取MCP资源（敏感数据）
-  call_tool: high         # 元工具调用（可间接调用任意工具）
   screenshot: high        # 截屏（可捕获屏幕敏感信息）
+  access_api: high        # 访问外部API
 
   # 中等风险
   search: medium

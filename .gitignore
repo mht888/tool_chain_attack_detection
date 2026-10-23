@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pyo
+*.egg-info/
+dist/
+build/
+*.egg
 
 # Virtual Environment
 venv/
@@ -14,9 +18,23 @@ env/
 .vscode/
 *.swp
 *.swo
+.trae/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
 
 # Generated Reports
 reports/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
 
 # OS
 .DS_Store

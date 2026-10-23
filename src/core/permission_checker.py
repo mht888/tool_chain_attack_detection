@@ -1,18 +1,19 @@
 """
 权限策略检查器
+
+仅拦截黑名单工具（完全禁止执行，命中即阻断）；
+非黑名单工具一律放行，交由注入检查、链模式检查、频率检查进一步检测。
 """
 
 from typing import Any
 import yaml
-
-from src.rules.tool_classifier import classify_tool
 
 
 class PermissionChecker:
     """
     权限策略检查器
 
-    检查工具是否在允许列表中（白名单/黑名单）。
+    黑名单工具直接阻断，其余工具放行。
     """
 
     def __init__(self, policy_path: str):
@@ -23,9 +24,6 @@ class PermissionChecker:
             policy_path: 权限策略配置路径（YAML格式）
         """
         self.policy = self._load_policy(policy_path)
-        
-        # 加载工具风险等级配置
-        self.tool_risk_levels = self.policy.get("tool_risk_levels", {})
 
     def _load_policy(self, path: str) -> dict[str, Any]:
         """加载权限策略"""
@@ -56,40 +54,19 @@ class PermissionChecker:
                 "risk_note": str (风险标记，用于后续评分)
             }
         """
-        # 检查黑名单
+        # 仅检查黑名单：命中即阻断，不做后续检查
         forbidden_tools = self.policy.get("forbidden_tools", [])
         if tool_name in forbidden_tools:
             return {
                 "allowed": False,
-                "blocked": True,  # 黑名单工具直接阻断
+                "blocked": True,
                 "tool_name": tool_name,
                 "reason": f"工具 {tool_name} 在黑名单中",
                 "risk": "critical",
                 "risk_note": f"工具 {tool_name} 被明确禁止"
             }
 
-        # 检查白名单
-        allowed_tools = self.policy.get("allowed_tools", [])
-        if allowed_tools and tool_name not in allowed_tools:
-            # 不在白名单中，优先使用 YAML 配置的风险等级，否则使用 tool_classifier 动态评估
-            if tool_name in self.tool_risk_levels:
-                risk = self.tool_risk_levels[tool_name]
-                risk_note = f"工具 {tool_name} 未在白名单中配置，YAML 配置风险等级为 {risk}"
-            else:
-                classification = classify_tool(tool_name)
-                risk = classification.risk
-                risk_note = f"工具 {tool_name} 未在白名单中配置，动态分类为 {classification.risk} 风险：{classification.description}"
-            
-            return {
-                "allowed": True,  # 允许，但标记风险
-                "blocked": False,
-                "tool_name": tool_name,
-                "reason": f"工具 {tool_name} 不在白名单中",
-                "risk": risk,
-                "risk_note": risk_note
-            }
-
-        # 通过检查
+        # 非黑名单工具一律放行
         return {
             "allowed": True,
             "blocked": False,

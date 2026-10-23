@@ -20,7 +20,7 @@ class RiskScorer:
         self.alert_weights = {
             "PERMISSION_VIOLATION": 40,
             "INJECTION_DETECTED": 50,
-            "DANGEROUS_CHAIN": 45,
+            "CAPABILITY_CHAIN": 45,
             "FREQUENCY_ANOMALY": 20
         }
 
@@ -51,11 +51,11 @@ class RiskScorer:
         risk_bonus = self.risk_weights.get(risk, 15)
 
         # 特殊规则
-        if alert_type == "DANGEROUS_CHAIN":
-            # 链越长，风险越高
+        if alert_type == "CAPABILITY_CHAIN":
+            # 能力链越长，风险越高
             pattern = details.get("pattern", {})
-            tools = pattern.get("tools", [])
-            length_bonus = min(len(tools) * 5, 20)
+            capabilities = pattern.get("capabilities", [])
+            length_bonus = min(len(capabilities) * 5, 20)
             total = base_score + risk_bonus + length_bonus
         elif alert_type == "FREQUENCY_ANOMALY":
             # 频率越高，风险越高

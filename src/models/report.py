@@ -8,6 +8,24 @@ from typing import Optional
 from src.models.alert import Alert
 
 
+# 告警类型中英文映射
+ALERT_TYPE_MAP = {
+    "CAPABILITY_CHAIN": "能力链告警 (Capability Chain)",
+    "PERMISSION_VIOLATION": "权限违规 (Permission Violation)",
+    "INJECTION_DETECTED": "注入检测 (Injection Detected)",
+    "FREQUENCY_ANOMALY": "频率异常 (Frequency Anomaly)",
+}
+
+# 攻击类型中英文映射
+ATTACK_TYPE_MAP = {
+    "sql_injection": "SQL注入 (SQL Injection)",
+    "command_injection": "命令注入 (Command Injection)",
+    "path_traversal": "路径遍历 (Path Traversal)",
+    "xss": "XSS攻击 (Cross-Site Scripting)",
+    "ldap_injection": "LDAP注入 (LDAP Injection)",
+}
+
+
 class DetectionReport:
     """
     检测报告
@@ -100,7 +118,9 @@ class DetectionReport:
             lines.append("")
 
             for i, alert in enumerate(self.alerts, 1):
-                lines.append(f"### 告警 {i}: {alert.alert_type}")
+                # 使用中英文告警类型
+                alert_type_cn = ALERT_TYPE_MAP.get(alert.alert_type, alert.alert_type)
+                lines.append(f"### 告警 {i}: {alert_type_cn}")
                 lines.append("")
                 lines.append(f"- **告警ID:** {alert.alert_id}")
                 lines.append(f"- **风险等级:** {self._format_risk_level(alert.risk_level)}")
@@ -109,18 +129,42 @@ class DetectionReport:
                 lines.append("")
 
                 # 根据告警类型显示不同详情
-                if alert.alert_type == "DANGEROUS_CHAIN":
+                if alert.alert_type == "CAPABILITY_CHAIN":
                     pattern = alert.details.get("pattern", {})
-                    lines.append(f"**危险链模式:** {pattern.get('name', 'unknown')}")
+                    lines.append(f"**能力链模式:** {pattern.get('name', 'unknown')}")
                     lines.append("")
                     lines.append(f"**描述:** {pattern.get('description', '')}")
                     lines.append("")
-                    lines.append("**工具调用链:**")
+                    lines.append("**能力序列:**")
                     lines.append("")
                     lines.append("```")
-                    lines.append(" → ".join(alert.tool_chain))
+                    lines.append(" → ".join(pattern.get('capabilities', [])))
                     lines.append("```")
                     lines.append("")
+                    
+                    # 显示危险链范围
+                    matched_indices = pattern.get('matched_indices', [])
+                    if matched_indices:
+                        start_idx = min(matched_indices) + 1  # 转为1-based
+                        end_idx = max(matched_indices) + 1
+                        lines.append(f"**危险链范围:** 第 {start_idx} 步 → 第 {end_idx} 步")
+                        lines.append("")
+                        lines.append("**危险链详情:**")
+                        lines.append("")
+                        lines.append("```")
+                        for j, idx in enumerate(matched_indices):
+                            if j > 0:
+                                lines.append("  ↓")
+                            if idx < len(self.tool_call_log):
+                                call = self.tool_call_log[idx]
+                                lines.append(f"  [{idx+1}] {call['tool']}")
+                                # 显示参数
+                                args = call.get('arguments', {})
+                                if args:
+                                    args_str = self._format_arguments(args)
+                                    lines.append(f"      参数: {args_str}")
+                        lines.append("```")
+                        lines.append("")
 
                 elif alert.alert_type == "PERMISSION_VIOLATION":
                     lines.append(f"**违规工具:** {alert.details.get('tool_name', '')}")
@@ -129,7 +173,10 @@ class DetectionReport:
                     lines.append("")
 
                 elif alert.alert_type == "INJECTION_DETECTED":
-                    lines.append(f"**攻击类型:** {alert.details.get('attack_type', '')}")
+                    # 使用中英文攻击类型
+                    attack_type = alert.details.get('attack_type', '')
+                    attack_type_cn = ATTACK_TYPE_MAP.get(attack_type, attack_type)
+                    lines.append(f"**攻击类型:** {attack_type_cn}")
                     lines.append("")
                     lines.append(f"**检测模式:** `{alert.details.get('pattern', '')}`")
                     lines.append("")
@@ -201,6 +248,11 @@ class DetectionReport:
                 if i > 0:
                     lines.append("  ↓")
                 lines.append(f"  [{i+1}] {call['tool']}")
+                # 显示参数
+                args = call.get('arguments', {})
+                if args:
+                    args_str = self._format_arguments(args)
+                    lines.append(f"      参数: {args_str}")
 
             lines.append("```")
             lines.append("")
@@ -303,6 +355,44 @@ class DetectionReport:
         }
         emoji = emojis.get(risk, '⚪')
         return f"{emoji} {risk.upper()}"
+
+    def _format_arguments(self, args: dict, max_length: int = 80) -> str:
+        """
+        格式化工具参数为简洁的字符串
+        
+        Args:
+            args: 参数字典
+            max_length: 最大长度，超过则截断
+            
+        Returns:
+            格式化后的参数字符串
+        """
+        if not args:
+            return "{}"
+        
+        parts = []
+        for key, value in args.items():
+            if isinstance(value, str):
+                # 截断长字符串
+                if len(value) > 30:
+                    value = value[:27] + "..."
+                parts.append(f"{key}=\"{value}\"")
+            elif isinstance(value, (int, float, bool)):
+                parts.append(f"{key}={value}")
+            elif isinstance(value, dict):
+                parts.append(f"{key}={{...}}")
+            elif isinstance(value, list):
+                parts.append(f"{key}=[...]")
+            else:
+                parts.append(f"{key}=...")
+        
+        result = "{" + ", ".join(parts) + "}"
+        
+        # 如果超过最大长度，截断
+        if len(result) > max_length:
+            result = result[:max_length-3] + "..."
+        
+        return result
 
     def save(self, filepath: str):
         """保存报告到文件"""

@@ -90,9 +90,9 @@ def run_detection(input_path: str, output_path: str, rules_dir: str = "src/rules
                 print(f"      风险评分: {alert.risk_score}/100")
 
                 # 显示详细信息
-                if alert.alert_type == "DANGEROUS_CHAIN":
+                if alert.alert_type == "CAPABILITY_CHAIN":
                     pattern = alert.details.get("pattern", {})
-                    print(f"      危险模式: {pattern.get('name', 'unknown')}")
+                    print(f"      能力链模式: {pattern.get('name', 'unknown')}")
                     print(f"      描述: {pattern.get('description', '')}")
                 elif alert.alert_type == "PERMISSION_VIOLATION":
                     print(f"      原因: {alert.details.get('reason', '')}")

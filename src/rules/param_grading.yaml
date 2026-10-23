@@ -1,0 +1,859 @@
+# 工具参数定级配置
+# 每个工具的参数独立定级，单次调用的参数危险度 = 所命中参数等级的最大值（max 聚合）
+# 支持联合条件（joint_conditions）：跨参数判定，命中则覆盖 max 聚合结果
+# 每个条件分支可标注 capabilities：参数实际触发的能力
+
+# ============================================================
+# 定级规则结构说明
+# ============================================================
+# params:
+#   <param_name>:
+#     risk: <默认等级>           # critical/high/medium/low
+#     capabilities: [...]        # 默认能力
+#     conditions:                # 值条件（可选）
+#       - if:
+#           patterns: [...]      # 通配符匹配值
+#           key_patterns: [...]  # 匹配字典的键名
+#           value_regex: "..."   # 正则匹配值
+#           equals: ...          # 精确匹配值
+#         then: <等级>           # 命中时覆盖默认等级
+#         capabilities: [...]    # 命中时覆盖默认能力
+#
+# joint_conditions:              # 联合条件（可选）
+#   - when:
+#       <param1>: <条件>
+#       <param2>: <条件>
+#     then: <等级>               # 所有条件同时满足时覆盖 max 聚合
+#     capabilities: [...]        # 所有条件同时满足时覆盖默认能力
+
+# ============================================================
+# 工具参数定级配置（25 个非黑名单工具）
+# ============================================================
+
+# ---------- critical 级工具 ----------
+
+shell:
+  params:
+    command:
+      risk: critical
+      capabilities: [LOCAL_MUTATION, PRIVATE_ACCESS, EXTERNAL_ACTION]
+      conditions:
+        - if: {patterns: ["ls", "ls *", "cat *", "grep *", "find *", "echo *", "pwd", "whoami", "date"]}
+          then: medium
+          capabilities: [PRIVATE_ACCESS]  # 只读命令
+        - if: {patterns: ["rm *", "del *", "rmdir *"]}
+          then: critical
+          capabilities: [LOCAL_MUTATION]  # 删除操作
+        - if: {patterns: ["curl *", "wget *", "scp *"]}
+          then: critical
+          capabilities: [EXTERNAL_ACTION]  # 外传操作
+    env:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {key_patterns: ["*TOKEN*", "*KEY*", "*SECRET*", "*PASSWORD*", "*CREDENTIAL*"]}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS]  # 携带敏感变量名
+    working_dir:
+      risk: low
+      capabilities: []
+    timeout:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+http_request:
+  params:
+    url:
+      risk: critical
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {patterns: ["https://internal-api.com/*", "https://api.example.com/*",
+                          "https://*.company.com/*", "http://localhost/*", "http://127.0.0.1/*"]}
+          then: medium
+          capabilities: []  # 白名单域名，无危险能力
+    method:
+      risk: medium
+      capabilities: []
+    body:
+      risk: critical
+      capabilities: [EXTERNAL_ACTION]
+    payload:
+      risk: critical
+      capabilities: [EXTERNAL_ACTION]
+    data:
+      risk: critical
+      capabilities: [EXTERNAL_ACTION]
+    headers:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {key_patterns: ["*Authorization*", "*Cookie*", "*Token*", "*Secret*"]}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS, EXTERNAL_ACTION]  # 凭据外传
+    params:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {value_regex: "[A-Za-z0-9+/=]{100,}"}
+          then: critical
+          capabilities: [EXTERNAL_ACTION]  # URL 参数外传
+    auth:
+      risk: critical
+      capabilities: [CREDENTIAL_ACCESS, EXTERNAL_ACTION]
+    api_key:
+      risk: critical
+      capabilities: [CREDENTIAL_ACCESS, EXTERNAL_ACTION]
+    timeout:
+      risk: low
+      capabilities: []
+  joint_conditions:
+    # 白名单 URL + 任何参数 = 正常业务调用，无危险能力
+    - when:
+        url: {patterns: ["https://internal-api.com/*", "https://api.example.com/*",
+                         "https://*.company.com/*", "http://localhost/*", "http://127.0.0.1/*"]}
+      then: medium
+      capabilities: []
+  unregistered_param_risk: low
+
+read_env:
+  params:
+    var_name:
+      risk: critical
+      capabilities: [CREDENTIAL_ACCESS]
+      conditions:
+        - if: {patterns: ["*KEY*", "*TOKEN*", "*SECRET*", "*PASSWORD*", "*CREDENTIAL*"]}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS]
+        - if: {patterns: ["*"]}
+          then: medium
+          capabilities: [PRIVATE_ACCESS]  # 普通业务变量
+    default:
+      risk: low
+      capabilities: []
+    quiet:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+delete_file:
+  params:
+    path:
+      risk: critical
+      capabilities: [LOCAL_MUTATION]
+      conditions:
+        - if: {patterns: ["/etc/*", "/usr/*", "C:\\Windows\\*", "~/.ssh/*"]}
+          then: critical
+          capabilities: [LOCAL_MUTATION, PRIVILEGE_CHANGE]  # 系统关键路径
+        - if: {patterns: ["/tmp/*", "/data/*", "C:\\temp\\*"]}
+          then: high
+          capabilities: [LOCAL_MUTATION]  # 工作区路径
+    recursive:
+      risk: high
+      capabilities: [LOCAL_MUTATION]
+    force:
+      risk: high
+      capabilities: [LOCAL_MUTATION]
+    ignore_errors:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+# ---------- high 级工具 ----------
+
+read_file:
+  params:
+    path:
+      risk: low
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {patterns: ["~/.ssh/*", "*.env", "*credentials*", "/etc/passwd",
+                          ".git/config", "*_history"]}
+          then: critical
+          capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]  # 敏感路径含凭据
+    encoding:
+      risk: low
+      capabilities: []
+    offset:
+      risk: low
+      capabilities: []
+    limit:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+execute_sql:
+  params:
+    query:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {value_regex: "(?i)\\b(DROP|ALTER|TRUNCATE|GRANT|INTO\\s+OUTFILE|LOAD_FILE)\\b"}
+          then: critical
+          capabilities: [LOCAL_MUTATION, PRIVILEGE_CHANGE]  # 破坏性操作
+        - if: {value_regex: "(?i)\\b(INSERT|UPDATE|DELETE)\\b"}
+          then: high
+          capabilities: [LOCAL_MUTATION]  # 写操作
+    database:
+      risk: medium
+      capabilities: []
+    connection:
+      risk: medium
+      capabilities: []
+    params:
+      risk: medium
+      capabilities: []
+    bindings:
+      risk: medium
+      capabilities: []
+  unregistered_param_risk: low
+
+query_database:
+  params:
+    query:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {value_regex: "(?i)\\b(INSERT|UPDATE|DELETE|DROP)\\b"}
+          then: high
+          capabilities: [LOCAL_MUTATION]  # 写操作
+    filter:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {value_regex: "(?i)\\b(INSERT|UPDATE|DELETE|DROP)\\b"}
+          then: high
+          capabilities: [LOCAL_MUTATION]
+    condition:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {value_regex: "(?i)\\b(INSERT|UPDATE|DELETE|DROP)\\b"}
+          then: high
+          capabilities: [LOCAL_MUTATION]
+    table:
+      risk: medium
+      capabilities: []
+    collection:
+      risk: medium
+      capabilities: []
+    projection:
+      risk: low
+      capabilities: []
+    fields:
+      risk: low
+      capabilities: []
+    limit:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+write_file:
+  params:
+    path:
+      risk: low
+      capabilities: [LOCAL_MUTATION]
+      conditions:
+        - if: {patterns: ["/etc/*", "/usr/*", "C:\\Windows\\*", "~/.ssh/*",
+                          "*/authorized_keys", "*/hosts", "*/cron*"]}
+          then: critical
+          capabilities: [LOCAL_MUTATION, PRIVILEGE_CHANGE]  # 系统关键路径
+        - if: {patterns: ["/tmp/*", "/data/*", "C:\\temp\\*"]}
+          then: low
+          capabilities: [LOCAL_MUTATION]  # 白名单目录
+    content:
+      risk: low
+      capabilities: [LOCAL_MUTATION]
+      conditions:
+        - if: {value_regex: "^#!"}
+          then: high
+          capabilities: [LOCAL_MUTATION]  # shebang 脚本
+        - if: {value_regex: "[A-Za-z0-9+/=]{1000,}"}
+          then: high
+          capabilities: [LOCAL_MUTATION]  # 大块 base64 编码
+    data:
+      risk: low
+      capabilities: [LOCAL_MUTATION]
+      conditions:
+        - if: {value_regex: "^#!"}
+          then: high
+          capabilities: [LOCAL_MUTATION]
+        - if: {value_regex: "[A-Za-z0-9+/=]{1000,}"}
+          then: high
+          capabilities: [LOCAL_MUTATION]
+    mode:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: "append"}
+          then: medium
+          capabilities: [LOCAL_MUTATION]
+        - if: {equals: "overwrite"}
+          then: medium
+          capabilities: [LOCAL_MUTATION]
+    append:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+    overwrite:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+    encoding:
+      risk: low
+      capabilities: []
+  joint_conditions:
+    - when:
+        path: {patterns: ["/tmp/*", "/data/*", "C:\\temp\\*"]}
+        content: {value_regex: "^#!"}
+      then: medium
+      capabilities: [LOCAL_MUTATION]  # 白名单目录 + 脚本内容 = 正常辅助脚本生成
+  unregistered_param_risk: low
+
+git_commit:
+  params:
+    push:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {equals: true}
+          then: high
+          capabilities: [EXTERNAL_ACTION]
+    force_push:
+      risk: critical
+      capabilities: [EXTERNAL_ACTION, LOCAL_MUTATION]
+      conditions:
+        - if: {equals: true}
+          then: critical
+          capabilities: [EXTERNAL_ACTION, LOCAL_MUTATION]
+    branch:
+      risk: medium
+      capabilities: []
+      conditions:
+        - if: {patterns: ["main", "master"]}
+          then: high
+          capabilities: [EXTERNAL_ACTION]  # 直推主分支
+    message:
+      risk: medium
+      capabilities: []
+      conditions:
+        - if: {value_regex: "(?i)(ignore|disregard)\\s+(previous|all)\\s+(instructions?|rules?)"}
+          then: high
+          capabilities: [LOCAL_MUTATION]  # 可能的供应链注入
+    files:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+    paths:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+    author:
+      risk: low
+      capabilities: []
+    amend:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+  joint_conditions:
+    - when:
+        push: {equals: true}
+        force: {equals: true}
+      then: critical
+      capabilities: [EXTERNAL_ACTION, LOCAL_MUTATION]
+    - when:
+        push: {equals: true}
+        branch: {patterns: ["main", "master"]}
+      then: critical
+      capabilities: [EXTERNAL_ACTION, LOCAL_MUTATION]
+  unregistered_param_risk: low
+
+generate_token:
+  params:
+    scope:
+      risk: medium
+      capabilities: [CREDENTIAL_ACCESS]
+      conditions:
+        - if: {patterns: ["admin", "root", "*"]}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS, PRIVILEGE_CHANGE]  # 高权限 token
+    permissions:
+      risk: medium
+      capabilities: [CREDENTIAL_ACCESS]
+      conditions:
+        - if: {patterns: ["admin", "root", "*"]}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS, PRIVILEGE_CHANGE]
+    roles:
+      risk: medium
+      capabilities: [CREDENTIAL_ACCESS]
+      conditions:
+        - if: {patterns: ["admin", "root", "*"]}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS, PRIVILEGE_CHANGE]
+    user_id:
+      risk: high
+      capabilities: [CREDENTIAL_ACCESS]
+      conditions:
+        - if: {value_regex: "^(?!current_user).*$"}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS, PRIVILEGE_CHANGE]  # 冒充用户
+    subject:
+      risk: high
+      capabilities: [CREDENTIAL_ACCESS]
+      conditions:
+        - if: {value_regex: "^(?!current_user).*$"}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS, PRIVILEGE_CHANGE]
+    token_type:
+      risk: medium
+      capabilities: []
+    audience:
+      risk: medium
+      capabilities: []
+    expiry:
+      risk: low
+      capabilities: []
+    ttl:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+read_memory:
+  params:
+    key:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {key_patterns: ["*password*", "*credential*", "*token*"]}
+          then: critical
+          capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]  # 读取凭据
+    keys:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {key_patterns: ["*password*", "*credential*", "*token*"]}
+          then: critical
+          capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]
+    all:
+      risk: high
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {equals: true}
+          then: high
+          capabilities: [PRIVATE_ACCESS]
+    prefix:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {equals: true}
+          then: high
+          capabilities: [PRIVATE_ACCESS]
+    session_id:
+      risk: medium
+      capabilities: []
+      conditions:
+        - if: {value_regex: "^(?!current_session).*$"}
+          then: critical
+          capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]  # 跨会话读取
+  unregistered_param_risk: low
+
+update_memory:
+  params:
+    key:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+    content:
+      risk: high
+      capabilities: [LOCAL_MUTATION]
+    value:
+      risk: high
+      capabilities: [LOCAL_MUTATION]
+    mode:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: "overwrite"}
+          then: medium
+          capabilities: [LOCAL_MUTATION]
+    persistent:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: true}
+          then: medium
+          capabilities: [LOCAL_MUTATION]
+  unregistered_param_risk: low
+
+update_context:
+  params:
+    content:
+      risk: high
+      capabilities: [LOCAL_MUTATION]
+    value:
+      risk: high
+      capabilities: [LOCAL_MUTATION]
+    section:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: "system"}
+          then: medium
+          capabilities: [LOCAL_MUTATION]
+    key:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: "system"}
+          then: medium
+          capabilities: [LOCAL_MUTATION]
+    persistent:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: true}
+          then: medium
+          capabilities: [LOCAL_MUTATION]
+  unregistered_param_risk: low
+
+get_session:
+  params:
+    include_token:
+      risk: medium
+      capabilities: []
+      conditions:
+        - if: {equals: true}
+          then: medium
+          capabilities: [CREDENTIAL_ACCESS]  # 获取 token
+    include_credentials:
+      risk: medium
+      capabilities: []
+      conditions:
+        - if: {equals: true}
+          then: medium
+          capabilities: [CREDENTIAL_ACCESS]  # 获取凭据
+    session_id:
+      risk: medium
+      capabilities: []
+      conditions:
+        - if: {value_regex: "^(?!current_session).*$"}
+          then: critical
+          capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]  # 他会话
+    user_id:
+      risk: medium
+      capabilities: []
+      conditions:
+        - if: {value_regex: "^(?!current_user).*$"}
+          then: critical
+          capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]  # 他用户
+  joint_conditions:
+    - when:
+        session_id: {value_regex: "^(?!current_session).*$"}
+        include_token: {equals: true}
+      then: critical
+      capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]  # 他会话 + 取 token = 劫持
+    - when:
+        session_id: {value_regex: "^(?!current_session).*$"}
+        include_credentials: {equals: true}
+      then: critical
+      capabilities: [PRIVATE_ACCESS, CREDENTIAL_ACCESS]
+  unregistered_param_risk: low
+
+read_resource:
+  params:
+    uri:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {patterns: ["file://*"]}
+          then: critical
+          capabilities: [PRIVATE_ACCESS]  # 本地文件
+        - if: {patterns: ["http://*", "https://*"]}
+          then: high
+          capabilities: [EXTERNAL_INGESTION]  # 外部资源
+        - if: {patterns: ["mcp://*"]}
+          then: medium
+          capabilities: [PRIVATE_ACCESS]
+    resource_id:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {patterns: ["file://*"]}
+          then: critical
+          capabilities: [PRIVATE_ACCESS]
+        - if: {patterns: ["http://*", "https://*"]}
+          then: high
+          capabilities: [EXTERNAL_INGESTION]
+        - if: {patterns: ["mcp://*"]}
+          then: medium
+          capabilities: [PRIVATE_ACCESS]
+    scope:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+screenshot:
+  params:
+    full_screen:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: true}
+          then: medium
+          capabilities: [PRIVATE_ACCESS]  # 全屏可能含敏感信息
+    output_path:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+    region:
+      risk: low
+      capabilities: []
+    window:
+      risk: low
+      capabilities: []
+    format:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+access_api:
+  params:
+    body:
+      risk: critical
+      capabilities: [EXTERNAL_ACTION]
+    payload:
+      risk: critical
+      capabilities: [EXTERNAL_ACTION]
+    api_key:
+      risk: critical
+      capabilities: [CREDENTIAL_ACCESS, EXTERNAL_ACTION]
+    token:
+      risk: critical
+      capabilities: [CREDENTIAL_ACCESS, EXTERNAL_ACTION]
+    headers:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {key_patterns: ["*Authorization*", "*Cookie*", "*Token*", "*Secret*"]}
+          then: critical
+          capabilities: [CREDENTIAL_ACCESS, EXTERNAL_ACTION]
+    endpoint:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {patterns: ["*/admin/*", "*/internal/*", "*/management/*"]}
+          then: critical
+          capabilities: [EXTERNAL_ACTION, PRIVILEGE_CHANGE]  # 管理端点
+    path:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {patterns: ["*/admin/*", "*/internal/*", "*/management/*"]}
+          then: critical
+          capabilities: [EXTERNAL_ACTION, PRIVILEGE_CHANGE]
+    method:
+      risk: medium
+      capabilities: []
+  joint_conditions:
+    - when:
+        endpoint: {patterns: ["*/internal/*"]}
+        api_key: {value_regex: ".*"}
+      then: high
+      capabilities: [EXTERNAL_ACTION]  # 内部 API + 带 key = 正常业务调用
+  unregistered_param_risk: low
+
+# ---------- medium 级工具 ----------
+
+search:
+  params:
+    query:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {value_regex: "(?i)(site:|intitle:|filetype:)"}
+          then: high
+          capabilities: [PRIVATE_ACCESS]  # dork 语法侦察
+    scope:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {patterns: ["*credential*", "*secret*", "*password*"]}
+          then: high
+          capabilities: [CREDENTIAL_ACCESS]  # 搜索凭据
+    limit:
+      risk: low
+      capabilities: []
+    filters:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+browse_url:
+  params:
+    url:
+      risk: high
+      capabilities: [EXTERNAL_INGESTION]
+      conditions:
+        - if: {patterns: ["https://internal-api.com/*", "https://api.example.com/*",
+                          "https://*.company.com/*", "http://localhost/*", "http://127.0.0.1/*"]}
+          then: medium
+          capabilities: []  # 白名单域名
+        - if: {value_regex: "[A-Za-z0-9+/=]{100,}"}
+          then: critical
+          capabilities: [EXTERNAL_INGESTION, EXTERNAL_ACTION]  # query string 含超长编码数据
+    method:
+      risk: medium
+      capabilities: []
+    timeout:
+      risk: low
+      capabilities: []
+    wait:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+list_directory:
+  params:
+    path:
+      risk: low
+      capabilities: [PRIVATE_ACCESS]
+      conditions:
+        - if: {patterns: ["~/.ssh/*", "/etc/*", "C:\\Users\\*"]}
+          then: high
+          capabilities: [PRIVATE_ACCESS]  # 敏感目录
+    recursive:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {equals: true}
+          then: medium
+          capabilities: [PRIVATE_ACCESS]
+    depth:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {value_regex: "^[5-9][0-9]*$|^[0-9]{2,}$"}
+          then: medium
+          capabilities: [PRIVATE_ACCESS]  # 深度遍历
+    include_hidden:
+      risk: medium
+      capabilities: [PRIVATE_ACCESS]
+    pattern:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+send_message:
+  params:
+    content:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {value_regex: "(?i)(-----BEGIN|AKIA[A-Z0-9]{16})"}
+          then: critical
+          capabilities: [EXTERNAL_ACTION, CREDENTIAL_ACCESS]  # 含密钥格式
+    message:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {value_regex: "(?i)(-----BEGIN|AKIA[A-Z0-9]{16})"}
+          then: critical
+          capabilities: [EXTERNAL_ACTION, CREDENTIAL_ACCESS]
+    attachments:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+    file_path:
+      risk: high
+      capabilities: [EXTERNAL_ACTION, PRIVATE_ACCESS]  # 文件外传
+    webhook_url:
+      risk: high
+      capabilities: [EXTERNAL_ACTION]
+      conditions:
+        - if: {patterns: ["https://open.feishu.cn/*", "https://oapi.dingtalk.com/*"]}
+          then: medium
+          capabilities: [EXTERNAL_ACTION]  # 企业 webhook 白名单
+    chat_id:
+      risk: medium
+      capabilities: []
+    recipient:
+      risk: medium
+      capabilities: []
+    channel:
+      risk: medium
+      capabilities: []
+  unregistered_param_risk: low
+
+scrape_web:
+  params:
+    url:
+      risk: high
+      capabilities: [EXTERNAL_INGESTION]
+      conditions:
+        - if: {patterns: ["https://internal-api.com/*", "https://api.example.com/*",
+                          "https://*.company.com/*", "http://localhost/*", "http://127.0.0.1/*"]}
+          then: medium
+          capabilities: []  # 白名单域名
+    start_url:
+      risk: high
+      capabilities: [EXTERNAL_INGESTION]
+      conditions:
+        - if: {patterns: ["https://internal-api.com/*", "https://api.example.com/*",
+                          "https://*.company.com/*", "http://localhost/*", "http://127.0.0.1/*"]}
+          then: medium
+          capabilities: []
+    depth:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {value_regex: "^[5-9][0-9]*$|^[0-9]{2,}$"}
+          then: medium
+          capabilities: [EXTERNAL_INGESTION]  # 深度爬取
+    max_pages:
+      risk: low
+      capabilities: []
+      conditions:
+        - if: {value_regex: "^[5-9][0-9]*$|^[0-9]{2,}$"}
+          then: medium
+          capabilities: [EXTERNAL_INGESTION]
+    follow_links:
+      risk: medium
+      capabilities: [EXTERNAL_INGESTION]
+    output_path:
+      risk: medium
+      capabilities: [LOCAL_MUTATION]
+    selectors:
+      risk: low
+      capabilities: []
+    extract_rules:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+# ---------- low / NONE 级工具 ----------
+
+parse_json:
+  params:
+    json:
+      risk: low
+      capabilities: []
+    data:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+calculate:
+  params:
+    expression:
+      risk: low
+      capabilities: []
+    formula:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low
+
+format_text:
+  params:
+    template:
+      risk: low
+      capabilities: []
+    variables:
+      risk: low
+      capabilities: []
+    text:
+      risk: low
+      capabilities: []
+  unregistered_param_risk: low

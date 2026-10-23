@@ -1,0 +1,105 @@
+# 功能链模式库
+# 基于能力序列检测危险工具调用链
+# 共 11 个功能链，覆盖原有 56 个危险链模式中的 38 个可达模式
+# 另外 18 个涉及黑名单工具的模式已在权限层阻断，无需功能链覆盖
+
+# ============================================================
+# 功能链定义
+# ============================================================
+
+# FC-1: 私有数据外泄链
+# 覆盖：data_exfiltration_basic/via_email/via_sql/via_sql_email/via_env/via_env_email/complex,
+#       session_hijack_exfil/email, mcp_resource_exfiltration, cloud_data_exfiltration,
+#       memory_exfiltration, memory_exfiltration_email
+- name: private_data_exfiltration
+  capabilities: [PRIVATE_ACCESS, EXTERNAL_ACTION]
+  risk: critical
+  description: 读取内部数据后发送到外部（包括文件、数据库、会话、内存等）
+  remediation: 实施外部URL白名单；验证数据访问范围
+
+# FC-2: 凭据外泄链
+# 覆盖：data_exfiltration_via_env, session_hijack_exfil, memory_exfiltration（参数含凭据时）
+- name: credential_exfiltration
+  capabilities: [CREDENTIAL_ACCESS, EXTERNAL_ACTION]
+  risk: critical
+  description: 获取凭据后发送到外部（环境变量、会话token、内存中的密钥等）
+  remediation: 禁止凭据外传；验证外部请求不含敏感信息
+
+# FC-3: 本地变更外泄链
+# 覆盖：command_injection_exfil, git_to_rce, screen_data_exfil（shell含外传能力时）
+- name: local_mutation_exfiltration
+  capabilities: [LOCAL_MUTATION, EXTERNAL_ACTION]
+  risk: critical
+  description: 修改本地状态后将结果发送到外部（命令执行、git提交、截屏等）
+  remediation: 限制本地变更后的外部传输
+
+# FC-4: 外部数据污染链
+# 覆盖：file_overwrite, web_content_persist, memory_poisoning, context_injection
+- name: external_data_poisoning
+  capabilities: [EXTERNAL_INGESTION, LOCAL_MUTATION]
+  risk: high
+  description: 从外部获取数据后写入本地（文件、内存、上下文等）
+  remediation: 验证外部数据的合法性；限制外部内容的本地写入
+
+# FC-5: 外部数据注入数据库链
+# 覆盖：data_poisoning_via_db, web_content_injection
+- name: external_data_injection
+  capabilities: [EXTERNAL_INGESTION, PRIVATE_ACCESS]
+  risk: high
+  description: 从外部获取数据后注入数据库查询
+  remediation: 验证外部数据后再用于数据库操作；实施参数化查询
+
+# FC-6: 数据读取后本地变更链
+# 覆盖：privilege_escalation_via_db, env_secret_persist, file_deletion_chain,
+#       directory_to_write, memory_persist
+- name: read_then_mutate
+  capabilities: [PRIVATE_ACCESS, LOCAL_MUTATION]
+  risk: high
+  description: 读取数据后进行本地变更（数据库结果写文件、环境变量持久化、删除文件等）
+  remediation: 限制数据读取后的本地写入操作
+
+# FC-7: 本地变更后数据读取链
+# 覆盖：command_injection_persist, data_poisoning_via_file
+- name: mutate_then_read
+  capabilities: [LOCAL_MUTATION, PRIVATE_ACCESS]
+  risk: high
+  description: 修改本地状态后读取数据（写入恶意文件后读取、命令执行后读取输出）
+  remediation: 验证本地变更后的数据读取
+
+# FC-9: 外部数据到多能力链
+# 覆盖：remote_code_execution_via_shell, browser_data_exfiltration, scraping_to_external,
+#       screen_data_exfil, screen_data_exfil_email（shell作为中间/终点含多能力）
+- name: external_to_multi_capability
+  capabilities: [EXTERNAL_INGESTION, LOCAL_MUTATION, PRIVATE_ACCESS, EXTERNAL_ACTION]
+  risk: critical
+  description: 从外部获取数据后触发多种能力（浏览网页后执行命令、截屏后外传等）
+  remediation: 禁止外部数据用于多能力操作
+
+# FC-10: 敏感路径访问链
+# 覆盖：sensitive_file_access, directory_traversal（参数命中敏感路径时）
+- name: sensitive_path_access
+  capabilities: [PRIVATE_ACCESS, LOCAL_MUTATION, PRIVILEGE_CHANGE]
+  risk: critical
+  description: 访问敏感路径后触发权限变更（读写系统文件、遍历敏感目录等）
+  remediation: 限制敏感路径访问；实施路径白名单
+
+# FC-11: Git操作到多能力链
+# 覆盖：git_to_rce（git_commit push → shell）
+- name: git_to_multi_capability
+  capabilities: [LOCAL_MUTATION, EXTERNAL_ACTION, PRIVATE_ACCESS]
+  risk: critical
+  description: Git操作后触发多种能力（提交代码后执行命令、推送后读取数据等）
+  remediation: 限制Git操作后的命令执行；实施部署审批流程
+
+# ============================================================
+# 重叠关系说明
+# ============================================================
+# FC-2 ⊂ FC-1    （CREDENTIAL_ACCESS 出现时 PRIVATE_ACCESS 也必然出现）
+# FC-3 ⊂ FC-1    （shell 的 LOCAL_MUTATION 场景下 PRIVATE_ACCESS 也出现）
+# FC-10 ⊂ FC-6   （PRIVILEGE_CHANGE 是 LOCAL_MUTATION 的加强版）
+#
+# 同一工具调用序列可能同时命中多个功能链，这是预期行为
+# 每个链代表不同风险维度：
+# - read_file → http_request：命中 FC-1（数据外泄）
+# - read_file(~/.ssh) → http_request：同时命中 FC-1 + FC-2（凭据外泄，更严重）
+# - shell(curl) → http_request：同时命中 FC-1 + FC-3（命令输出外泄）

@@ -65,9 +65,8 @@ DANGEROUS_CHAINS = [
     {"name": "session_hijack_exfil", "tools": ["get_session", "http_request"]},
     {"name": "session_hijack_email", "tools": ["get_session", "send_email"]},
     
-    # MCP特定模式（2个）
+    # MCP特定模式（1个）
     {"name": "mcp_resource_exfiltration", "tools": ["read_resource", "send_message"]},
-    {"name": "mcp_tool_abuse", "tools": ["call_tool", "http_request"]},
     
     # 云服务类（1个）
     {"name": "cloud_data_exfiltration", "tools": ["query_database", "http_request"]},
@@ -118,7 +117,6 @@ TOOL_ARGS = {
     "get_session": {"session_id": "sess_123"},
     "read_resource": {"resource_id": "res_123"},
     "send_message": {"to": "user", "message": "test"},
-    "call_tool": {"tool_name": "helper", "args": {}},
     "query_database": {"db": "main", "query": "SELECT 1"},
     "git_commit": {"message": "update"},
     "deploy": {"env": "production"},
