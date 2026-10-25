@@ -1,0 +1,9 @@
+# Web 后端依赖
+# 注意：安装前需先安装主项目依赖（项目根目录 requirements.txt）
+
+# Web 框架
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+
+# 配置文件加载（reports.py 中用于读取 YAML 规则）
+pyyaml>=6.0

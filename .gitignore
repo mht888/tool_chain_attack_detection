@@ -40,6 +40,19 @@ reports/
 .DS_Store
 Thumbs.db
 
+# Node.js
+node_modules/
+package-lock.json
+
+# Frontend Build
+web/frontend/dist/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+web/backend/data/
+
 # Environment
 .env
 *.env
