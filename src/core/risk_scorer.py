@@ -56,6 +56,9 @@ class RiskScorer:
             pattern = details.get("pattern", {})
             capabilities = pattern.get("capabilities", [])
             length_bonus = min(len(capabilities) * 5, 20)
+            # 风险等级取自模式配置（details.pattern.risk），取不到时回退 medium
+            chain_risk = pattern.get("risk", "medium")
+            risk_bonus = self.risk_weights.get(chain_risk, 15)
             total = base_score + risk_bonus + length_bonus
         elif alert_type == "FREQUENCY_ANOMALY":
             # 频率越高，风险越高

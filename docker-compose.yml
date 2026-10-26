@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build: .
+    container_name: tcad-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # 数据持久化：SQLite 数据库挂载到宿主机，容器删除后数据不丢失
+      - ./data:/app/web/backend/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - tcad-network
+
+  # 前端服务（Nginx 托管静态文件 + 反向代理 API）
+  frontend:
+    image: nginx:alpine
+    container_name: tcad-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      # 前端构建产物（需先执行 npm run build）
+      - ./web/frontend/dist:/usr/share/nginx/html:ro
+      # Nginx 配置文件
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - tcad-network
+
+networks:
+  tcad-network:
+    driver: bridge
