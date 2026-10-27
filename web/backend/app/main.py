@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import FRONTEND_DEV_ORIGIN
 from app.services import storage
 
-from app.api import detections, examples, reports
+from app.api import detections, examples, guard, reports
 
 app = FastAPI(
     title="工具调用链攻击检测系统 API",
@@ -29,6 +29,7 @@ app.add_middleware(
 app.include_router(detections.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(examples.router, prefix="/api")
+app.include_router(guard.router, prefix="/api")
 
 
 @app.on_event("startup")

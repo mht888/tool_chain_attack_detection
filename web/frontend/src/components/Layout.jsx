@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom'
 const NAV_ITEMS = [
   { to: '/', label: '仪表盘', icon: '📊', end: true },
   { to: '/detect', label: '在线检测', icon: '🔍' },
+  { to: '/guard', label: '实时拦截', icon: '🛑' },
   { to: '/reports', label: '报告列表', icon: '📄' },
 ]
 

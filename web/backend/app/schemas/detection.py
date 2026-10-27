@@ -96,3 +96,27 @@ class ChainPatternItem(BaseModel):
     risk: str
     description: str
     remediation: str
+
+
+class GuardEvaluateRequest(BaseModel):
+    """执行前判决请求"""
+    session_id: str = Field(default="default", description="会话ID")
+    agent_name: Optional[str] = Field(default=None, description="Agent 名称")
+    tool_name: str = Field(description="工具名称")
+    arguments: dict[str, Any] = Field(default_factory=dict, description="工具参数")
+    timestamp: Optional[str] = Field(default=None, description="调用时间戳（ISO 格式，可选）")
+
+
+class PolicyDecisionResponse(BaseModel):
+    """执行前判决响应"""
+    session_id: str
+    tool_name: str
+    action: str = Field(description="判决动作: ALLOW / REVIEW / BLOCK")
+    reason: str
+    risk_level: str
+    risk_score: float
+    alert_types: list[str] = Field(default_factory=list)
+    matched_chain: Optional[str] = None
+    log_required: bool = False
+    approval_required: bool = False
+    session_compromised: bool = False

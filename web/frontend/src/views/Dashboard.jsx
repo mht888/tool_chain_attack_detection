@@ -24,6 +24,12 @@ export default function Dashboard() {
   const totalAlerts = reports.reduce((s, r) => s + r.alert_count, 0)
   const malicious = reports.filter((r) => r.verdict === 'MALICIOUS').length
   const suspicious = reports.filter((r) => r.verdict === 'SUSPICIOUS').length
+  const safe = reports.length - malicious - suspicious
+  const dist = [
+    { key: 'MALICIOUS', label: '恶意', count: malicious },
+    { key: 'SUSPICIOUS', label: '可疑', count: suspicious },
+    { key: 'SAFE', label: '安全', count: safe },
+  ]
 
   return (
     <div>
@@ -54,6 +60,32 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {reports.length > 0 && (
+        <div className="card">
+          <div className="card-title">判定分布</div>
+          <div className="dist-bar">
+            {dist
+              .filter((d) => d.count > 0)
+              .map((d) => (
+                <div
+                  key={d.key}
+                  className={`dist-seg ${d.key}`}
+                  style={{ width: `${(d.count / reports.length) * 100}%` }}
+                  title={`${d.label} ${d.count}`}
+                />
+              ))}
+          </div>
+          <div className="dist-legend">
+            {dist.map((d) => (
+              <span key={d.key}>
+                <span className={`dist-dot ${d.key}`} />
+                {d.label} {d.count}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-title">最近检测报告</div>

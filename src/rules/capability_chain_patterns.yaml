@@ -1,7 +1,15 @@
 # 功能链模式库
 # 基于能力序列检测危险工具调用链
-# 共 11 个功能链，覆盖原有 56 个危险链模式中的 38 个可达模式
-# 另外 18 个涉及黑名单工具的模式已在权限层阻断，无需功能链覆盖
+# 共 14 个功能链（FC-1 ~ FC-14，编号连续）
+#
+# 对 examples/dangerous_chains 56 个样本的实测覆盖：
+# - 20 个样本含黑名单工具，在权限层直接阻断（不经功能链）
+# - 36 个可达样本中：
+#   - 24 个命中功能链并产生告警
+#   - 3 个链匹配但参数全低危被跳过（sensitive_file_access / directory_to_write /
+#     data_poisoning_via_file，属预期行为）
+#   - 9 个因样本参数问题未命中（参数名与定级配置不符、参数过于温和、
+#     工具未登记等，如 read_env 用 variable 而非 var_name）
 
 # ============================================================
 # 功能链定义
@@ -34,7 +42,7 @@
   remediation: 限制本地变更后的外部传输
 
 # FC-4: 外部数据污染链
-# 覆盖：file_overwrite, web_content_persist, memory_poisoning, context_injection
+# 覆盖：web_content_persist
 - name: external_data_poisoning
   capabilities: [EXTERNAL_INGESTION, LOCAL_MUTATION]
   risk: high
@@ -66,16 +74,39 @@
   description: 修改本地状态后读取数据（写入恶意文件后读取、命令执行后读取输出）
   remediation: 验证本地变更后的数据读取
 
-# FC-9: 外部数据到多能力链
-# 覆盖：remote_code_execution_via_shell, browser_data_exfiltration, scraping_to_external,
-#       screen_data_exfil, screen_data_exfil_email（shell作为中间/终点含多能力）
+# FC-8: 外部内容外传链
+# 覆盖：browser_data_exfiltration, scraping_to_external
+- name: external_content_exfiltration
+  capabilities: [EXTERNAL_INGESTION, EXTERNAL_ACTION]
+  risk: critical
+  description: 从外部获取内容后又发送到外部（浏览页面/爬取数据后外传到第三方地址）
+  remediation: 审查外部内容的去向；禁止抓取结果直接外传
+
+# FC-9: 外部动作到本地变更链
+# 覆盖：file_overwrite, memory_poisoning, context_injection（外部请求/凭据访问触发本地写入）
+- name: external_action_to_mutation
+  capabilities: [EXTERNAL_ACTION, LOCAL_MUTATION]
+  risk: high
+  description: 对外发起请求/携带凭据后进行本地变更（外部内容覆盖本地文件、污染内存/上下文）
+  remediation: 限制外部请求结果写入本地；审核内存/上下文变更来源
+
+# FC-10: 外部请求后数据读取链
+# 覆盖：data_poisoning_via_db, remote_code_execution_via_shell（外联后回读数据库/文件）
+- name: external_action_then_read
+  capabilities: [EXTERNAL_ACTION, PRIVATE_ACCESS]
+  risk: high
+  description: 对外发送请求/回传数据后读取内部数据（外联确认后查询数据库、读取文件）
+  remediation: 审查外联后的数据读取行为；对外响应内容做净化后再入库
+
+# FC-11: 外部数据到多能力链
+# 多能力组合的防御性模式（shell/抓取等同时命中读+变更+外传时触发）
 - name: external_to_multi_capability
   capabilities: [EXTERNAL_INGESTION, LOCAL_MUTATION, PRIVATE_ACCESS, EXTERNAL_ACTION]
   risk: critical
   description: 从外部获取数据后触发多种能力（浏览网页后执行命令、截屏后外传等）
   remediation: 禁止外部数据用于多能力操作
 
-# FC-10: 敏感路径访问链
+# FC-12: 敏感路径访问链
 # 覆盖：sensitive_file_access, directory_traversal（参数命中敏感路径时）
 - name: sensitive_path_access
   capabilities: [PRIVATE_ACCESS, LOCAL_MUTATION, PRIVILEGE_CHANGE]
@@ -83,7 +114,7 @@
   description: 访问敏感路径后触发权限变更（读写系统文件、遍历敏感目录等）
   remediation: 限制敏感路径访问；实施路径白名单
 
-# FC-11: Git操作到多能力链
+# FC-13: Git操作到多能力链
 # 覆盖：git_to_rce（git_commit push → shell）
 - name: git_to_multi_capability
   capabilities: [LOCAL_MUTATION, EXTERNAL_ACTION, PRIVATE_ACCESS]
@@ -91,12 +122,20 @@
   description: Git操作后触发多种能力（提交代码后执行命令、推送后读取数据等）
   remediation: 限制Git操作后的命令执行；实施部署审批流程
 
+# FC-14: 数据读取后权限提升链
+# 覆盖：authentication_bypass_via_info, authentication_bypass_via_db（读取内部数据后伪造高权令牌）
+- name: read_then_privilege_escalation
+  capabilities: [PRIVATE_ACCESS, PRIVILEGE_CHANGE]
+  risk: critical
+  description: 读取内部数据后进行权限变更（读配置/数据库后伪造管理员令牌、越权提权）
+  remediation: 高权令牌签发需二次认证；审计权限变更前的数据访问行为
+
 # ============================================================
 # 重叠关系说明
 # ============================================================
 # FC-2 ⊂ FC-1    （CREDENTIAL_ACCESS 出现时 PRIVATE_ACCESS 也必然出现）
 # FC-3 ⊂ FC-1    （shell 的 LOCAL_MUTATION 场景下 PRIVATE_ACCESS 也出现）
-# FC-10 ⊂ FC-6   （PRIVILEGE_CHANGE 是 LOCAL_MUTATION 的加强版）
+# FC-12 ⊂ FC-6   （PRIVILEGE_CHANGE 是 LOCAL_MUTATION 的加强版）
 #
 # 同一工具调用序列可能同时命中多个功能链，这是预期行为
 # 每个链代表不同风险维度：

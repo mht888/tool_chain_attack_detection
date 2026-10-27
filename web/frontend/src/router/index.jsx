@@ -1,5 +1,6 @@
 import Dashboard from '../views/Dashboard'
 import Detect from '../views/Detect'
+import Guard from '../views/Guard'
 import ReportList from '../views/ReportList'
 import ReportDetail from '../views/ReportDetail'
 
@@ -11,6 +12,10 @@ export default [
   {
     path: '/detect',
     element: <Detect />,
+  },
+  {
+    path: '/guard',
+    element: <Guard />,
   },
   {
     path: '/reports',

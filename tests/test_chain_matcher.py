@@ -165,5 +165,76 @@ class TestChainMatcher:
         assert len(result["capability_patterns"]) >= 1
 
 
+class TestNewCapabilityChains:
+    """FC-8/9/10/14 新增功能链测试"""
+
+    @pytest.fixture
+    def matcher(self):
+        return ChainMatcher("src/rules/capability_chain_patterns.yaml")
+
+    def _check(self, matcher, caps, risks):
+        buffer = [
+            ToolCallInput(tool_name=f"tool_{i}", arguments={}, timestamp=datetime.now())
+            for i in range(len(caps))
+        ]
+        return matcher.check(
+            buffer,
+            param_risk_map={i: r for i, r in enumerate(risks)},
+            capabilities_map={i: c for i, c in enumerate(caps)},
+        )
+
+    def test_fc8_external_content_exfiltration(self, matcher):
+        """浏览/爬取外部内容后外传 -> FC-8"""
+        result = self._check(
+            matcher,
+            caps=[["EXTERNAL_INGESTION"], ["EXTERNAL_ACTION"]],
+            risks=["high", "critical"],
+        )
+        names = [p["name"] for p in result["capability_patterns"]]
+        assert "external_content_exfiltration" in names
+
+    def test_fc9_external_action_to_mutation(self, matcher):
+        """对外请求后写入本地 -> FC-9"""
+        result = self._check(
+            matcher,
+            caps=[["EXTERNAL_ACTION"], ["LOCAL_MUTATION"]],
+            risks=["critical", "high"],
+        )
+        names = [p["name"] for p in result["capability_patterns"]]
+        assert "external_action_to_mutation" in names
+
+    def test_fc10_external_action_then_read(self, matcher):
+        """对外请求后读取内部数据 -> FC-10"""
+        result = self._check(
+            matcher,
+            caps=[["EXTERNAL_ACTION"], ["PRIVATE_ACCESS"]],
+            risks=["critical", "medium"],
+        )
+        names = [p["name"] for p in result["capability_patterns"]]
+        assert "external_action_then_read" in names
+
+    def test_fc14_read_then_privilege_escalation(self, matcher):
+        """读取内部数据后伪造高权令牌 -> FC-14"""
+        result = self._check(
+            matcher,
+            caps=[["PRIVATE_ACCESS"], ["CREDENTIAL_ACCESS", "PRIVILEGE_CHANGE"]],
+            risks=["low", "medium"],
+        )
+        names = [p["name"] for p in result["capability_patterns"]]
+        assert "read_then_privilege_escalation" in names
+
+    def test_new_chains_risk_levels(self, matcher):
+        """FC-8/14 为 critical，FC-9/10 为 high"""
+        patterns = {p["name"]: p for p in matcher.capability_patterns}
+        assert patterns["external_content_exfiltration"]["risk"] == "critical"
+        assert patterns["read_then_privilege_escalation"]["risk"] == "critical"
+        assert patterns["external_action_to_mutation"]["risk"] == "high"
+        assert patterns["external_action_then_read"]["risk"] == "high"
+
+    def test_pattern_count(self, matcher):
+        """模式库共 14 个功能链"""
+        assert len(matcher.capability_patterns) == 14
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -170,6 +170,28 @@ class DetectionService:
         alerts = self.detector.on_tool_call(tool_call)
         return [self._alert_to_dict(a) for a in alerts]
 
+    def evaluate_tool_call(
+        self,
+        session_id: str,
+        tool_name: str,
+        arguments: dict,
+        timestamp_str: str | None = None,
+        agent_name: str | None = None,
+    ) -> dict:
+        """
+        执行前判决：返回 ALLOW / REVIEW / BLOCK 决策，供调用方决定是否放行工具
+
+        （前置阻断的核心入口；被拦截的调用同样会记入会话历史）
+        """
+        tool_call = ToolCallInput(
+            tool_name=tool_name,
+            arguments=arguments,
+            timestamp=_parse_timestamp(timestamp_str),
+            session_id=session_id,
+            agent_name=agent_name,
+        )
+        return self.detector.evaluate(tool_call).model_dump(mode="json")
+
     @staticmethod
     def _alert_to_dict(alert) -> dict:
         """Alert (pydantic v2) -> JSON 安全的 dict"""

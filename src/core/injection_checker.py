@@ -73,16 +73,18 @@ class InjectionChecker:
 
     def _match_pattern(self, value: str, pattern: str) -> bool:
         """
-        匹配模式（支持通配符 *）
+        匹配模式（glob 风格：* 为通配符，其余字符按字面匹配）
 
         Args:
             value: 待匹配的值
-            pattern: 模式（支持 * 通配符）
+            pattern: glob 模式（仅 * 是通配符）
 
         Returns:
             是否匹配
         """
-        regex_pattern = pattern.replace("*", ".*")
+        # 先整体转义（避免 \U、\W 等被当作正则转义符导致崩溃/误判），
+        # 再把转义后的 \* 还原成正则通配 .*
+        regex_pattern = re.escape(pattern).replace(r"\*", ".*")
         return bool(re.match(f"^{regex_pattern}$", value, re.IGNORECASE))
 
     def _check_injection(self, arguments: dict[str, Any]) -> dict[str, Any]:
